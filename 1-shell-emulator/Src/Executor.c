@@ -51,7 +51,7 @@ static ShellStatus ExecuteSingleCommand(ExecutorContext* ctx,
     assert(WIFEXITED(status));
     ctx->ExitCode = WEXITSTATUS(status);
 
-    if (ctx->ExitCode == 0) return SH_PROGRAM_FAILURE;
+    if (ctx->ExitCode != 0) return SH_PROGRAM_FAILURE;
     return SH_SUCCESS;
   }
 
