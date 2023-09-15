@@ -23,6 +23,15 @@ const char* GetErrorDescription(ShellStatus status) {
     case SH_PROGRAM_FAILURE:
       return "Program return non-zero exit code";
 
+    case SH_INPUT_OVERRIDE:
+      return "Input override";
+
+    case SH_OUTPUT_OVERRIDE:
+      return "Output override";
+
+    case SH_SYNTAX_ERROR:
+      return "Syntax error";
+
     default:
       // assert(0 && "Unknown Error Code");
       return "Unknown Error Code";
