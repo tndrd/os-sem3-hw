@@ -14,7 +14,7 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim) {
     char* token = strtok_r(stringTmp, delim, &savePtr);
     if (!token) break;
 
-    if (size + 1 == tp->Capacity) {  // We should leave space for null
+    if (size + 2 == tp->Capacity) {  // We should leave space for null
       size_t newCapacity = tp->Capacity * 2;
 
       char** newTokens =
@@ -31,6 +31,7 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim) {
   }
 
   tp->Tokens[size] = NULL;
+  tp->Tokens[size + 1] = NULL;
   return SH_SUCCESS;
 }
 
