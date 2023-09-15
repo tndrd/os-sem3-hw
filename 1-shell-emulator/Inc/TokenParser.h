@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "ShellStatus.h"
 
@@ -20,3 +21,5 @@ ShellStatus TokenParserInit(TokenParser* tp);
 ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim);
 
 ShellStatus TokenParserDestroy(TokenParser* tp);
+
+ShellStatus TokenParserDump(const TokenParser* tp);

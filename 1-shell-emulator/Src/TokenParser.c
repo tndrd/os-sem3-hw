@@ -8,8 +8,10 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim) {
   size_t size = 0;
   char* savePtr;  // For strtok_r
 
+  char* stringTmp = string;
+
   while (1) {
-    char* token = strtok_r(string, delim, &savePtr);
+    char* token = strtok_r(stringTmp, delim, &savePtr);
     if (!token) break;
 
     if (size + 1 == tp->Capacity) { // We should leave space for null
@@ -25,6 +27,7 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim) {
     }
 
     tp->Tokens[size++] = token;
+    stringTmp = NULL;
   }
 
   tp->Tokens[size] = NULL;
@@ -49,5 +52,19 @@ ShellStatus TokenParserDestroy(TokenParser* tp) {
   if (!tp) return SH_BAD_ARG_PTR;
   free(tp->Tokens);
 
+  return SH_SUCCESS;
+}
+
+ShellStatus TokenParserDump(const TokenParser* tp) {
+  if (!tp) return SH_BAD_ARG_PTR;
+
+  char** token = tp->Tokens;
+  assert(token);
+
+  for(;*token != NULL; ++token)
+    printf("%s ", *token);
+
+  printf("NULL\n");
+  
   return SH_SUCCESS;
 }
