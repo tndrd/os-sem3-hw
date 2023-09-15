@@ -14,7 +14,7 @@ ShellStatus ShellInit(Shell* sh, FILE* input, FILE* output, char** env) {
 
   ShellStatus status;
 
-  status = ExecutorContextInit(&sh->Executor, env);
+  status = ExecutorContextInit(&sh->Executor, env, fileno(sh->Input), fileno(sh->Output));
 
   if (status != SH_SUCCESS) return status;
 
@@ -38,10 +38,7 @@ static ShellStatus ShellTick(Shell* sh) {
   ExecutorContext* executor = &sh->Executor;
   char** tokens = sh->Parser.Tokens;
 
-  int inputFd = fileno(sh->Input);
-  int outputFd = fileno(sh->Output);
-
-  status = Execute(executor, tokens, inputFd, outputFd);
+  status = Execute(executor, tokens);
 
   if (status != SH_SUCCESS) return status;
 }
