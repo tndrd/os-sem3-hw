@@ -11,9 +11,7 @@ typedef enum {
   SH_OUT_OF_RANGE,
   SH_STRING_LEN_MAX_SIZE,
   SH_ERRNO_ERROR,
-  SH_PROGRAM_FAILURE,
-  SH_FAILED_TO_CLEAR_PIPE_FATAL,
-  SH_NOT_FOUND
+  SH_PROGRAM_FAILURE
 } ShellStatus;
 
 const char* GetErrorDescription(ShellStatus status);

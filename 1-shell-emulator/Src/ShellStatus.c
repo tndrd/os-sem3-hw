@@ -23,9 +23,6 @@ const char* GetErrorDescription(ShellStatus status) {
     case SH_PROGRAM_FAILURE:
       return "Program return non-zero exit code";
 
-    case SH_FAILED_TO_CLEAR_PIPE_FATAL:
-      return "Fatal: failed to clear pipe";
-
     default:
       // assert(0 && "Unknown Error Code");
       return "Unknown Error Code";
