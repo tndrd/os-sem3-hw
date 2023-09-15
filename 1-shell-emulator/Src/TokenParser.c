@@ -14,9 +14,9 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim) {
     char* token = strtok_r(stringTmp, delim, &savePtr);
     if (!token) break;
 
-    if (size + 1 == tp->Capacity) { // We should leave space for null
+    if (size + 1 == tp->Capacity) {  // We should leave space for null
       size_t newCapacity = tp->Capacity * 2;
-      
+
       char** newTokens =
           (char**)realloc(tp->Tokens, newCapacity * sizeof(char*));
 
@@ -61,10 +61,9 @@ ShellStatus TokenParserDump(const TokenParser* tp) {
   char** token = tp->Tokens;
   assert(token);
 
-  for(;*token != NULL; ++token)
-    printf("%s ", *token);
+  for (; *token != NULL; ++token) printf("%s ", *token);
 
   printf("NULL\n");
-  
+
   return SH_SUCCESS;
 }
