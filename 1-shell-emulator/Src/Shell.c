@@ -23,10 +23,13 @@ ShellStatus ShellInit(Shell* sh, FILE* input, FILE* output, char** env) {
 
 static ShellStatus ShellTick(Shell* sh) {
   assert(sh);
-
   ShellStatus status;
 
-  if (getline(&sh->Buffer, &sh->Length, sh->Input) < 0) return SH_ERRNO_ERROR;
+  int readLen = getline(&sh->Buffer, &sh->Length, sh->Input);
+  if (readLen < 0) return SH_ERRNO_ERROR;
+
+  assert(sh->Buffer[readLen - 1] == '\n');
+  sh->Buffer[readLen - 1] = '\0';  // Remove endline character
 
   status = ParseTokens(&sh->Parser, sh->Buffer, DELIMETERS);
 
