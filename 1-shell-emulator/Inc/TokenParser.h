@@ -15,6 +15,10 @@ typedef struct {
   size_t Capacity;
 } TokenParser;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ShellStatus TokenParserInit(TokenParser* tp);
 
 // Creates token array from string (Modifies it!)
@@ -23,3 +27,7 @@ ShellStatus ParseTokens(TokenParser* tp, char* string, const char* delim);
 ShellStatus TokenParserDestroy(TokenParser* tp);
 
 ShellStatus TokenParserDump(const TokenParser* tp);
+
+#ifdef __cplusplus
+}
+#endif
