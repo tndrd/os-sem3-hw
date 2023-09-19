@@ -1,7 +1,7 @@
 #include <fstream>
 
-#include "gtest/gtest.h"
 #include "TokenParser.h"
+#include "gtest/gtest.h"
 
 static const char* DataPath = "../../1-shell-emulator/Tests/Data/TokenParser/";
 
@@ -70,7 +70,7 @@ void RunStringTest(const std::string& input,
   auto tpte = TPTE{};
 
   tpte.LoadString(input);
-  
+
   TestResult res = tpte.Run();
 
   ASSERT_EQ(res.Error, TestResult::TestError::Success);
@@ -85,16 +85,15 @@ void RunFileTest(const std::string& inputName,
   std::string inputData;
   std::vector<std::string> expectedData;
 
-  std::ifstream inputStream {DataPath + inputName};
+  std::ifstream inputStream{DataPath + inputName};
   ASSERT_TRUE(inputStream.good());
 
   std::getline(inputStream, inputData);
 
-  std::ifstream expectedStream {DataPath + expectedName};
+  std::ifstream expectedStream{DataPath + expectedName};
 
   std::string buf;
-  while (std::getline(expectedStream, buf, ' '))
-    expectedData.push_back(buf);
+  while (std::getline(expectedStream, buf, ' ')) expectedData.push_back(buf);
 
   RunStringTest(inputData, expectedData);
 }
@@ -161,7 +160,7 @@ TEST(TokenParser, LargeFile) {
   RunFileTest(inputName, expectedName);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
