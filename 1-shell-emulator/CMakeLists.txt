@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
-project(1-shell-emulator C)
+project(1-shell-emulator C CXX)
 
 include_directories(Inc/)
+add_subdirectory(../deps/googletest bin)
 
 add_library(ShellStatus Src/ShellStatus.c)
 
@@ -16,3 +17,6 @@ target_link_libraries(Shell PUBLIC TokenParser Executor)
 
 add_executable(${PROJECT_NAME} Src/Main.c)
 target_link_libraries(${PROJECT_NAME} PUBLIC Shell)
+
+add_executable(TokenParserTest Tests/TokenParserTest.cc)
+target_link_libraries(TokenParserTest PRIVATE GTest::gtest_main TokenParser)
