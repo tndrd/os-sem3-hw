@@ -11,12 +11,6 @@ const char* GetErrorDescription(ShellStatus status) {
     case SH_BAD_ALLOC:
       return "Failed to allocate memory";
 
-    case SH_OUT_OF_RANGE:
-      return "Index out of range";
-
-    case SH_STRING_LEN_MAX_SIZE:
-      return "Input string reached maximum size";
-
     case SH_ERRNO_ERROR:
       return strerror(errno);
 
