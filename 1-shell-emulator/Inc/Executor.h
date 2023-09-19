@@ -45,6 +45,10 @@ typedef struct {
   int Active;
 } ExecutorContext;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ShellStatus ExecutorContextInit(ExecutorContext* ctx, char** env, int inputFd,
                                 int outputFd);
 ShellStatus Execute(ExecutorContext* ctx, char** tokens);
@@ -63,3 +67,7 @@ static ShellStatus ProcessOperator(ExecutorContext* ctx, char** tokens,
 static ShellStatus ProcessSeparator(ExecutorContext* ctx, char** tokens,
                                     size_t* endTokenPtr, TokenType tokenType);
 static void ExecutorContinue(ExecutorContext* ctx);
+
+#ifdef __cplusplus
+}
+#endif
