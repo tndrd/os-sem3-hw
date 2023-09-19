@@ -61,6 +61,12 @@ class TokenParserTestEnvironment {
 
     return tokens;
   }
+
+  ~TokenParserTestEnvironment() {
+    if (HasRun) {
+      TokenParserDestroy(&Tp);
+    }
+  }
 };
 
 using TPTE = TokenParserTestEnvironment;
