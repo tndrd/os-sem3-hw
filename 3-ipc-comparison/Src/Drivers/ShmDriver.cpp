@@ -1,5 +1,23 @@
 #include "Drivers/ShmDriver.hpp"
 
+#include "IPC/ShMemRx.h"
+#include "IPC/ShMemTx.h"
+
+struct ShMemTxOpen {
+  key_t Key;
+
+  IPCStatus operator()(ShMemTransmitter* transmitter);
+};
+
+struct ShMemRxOpen {
+  key_t Key;
+
+  IPCStatus operator()(ShMemReceiver* receiver);
+};
+
+static IPCStatus CreateShm(key_t key, size_t size);
+static IPCStatus DeleteShm(key_t key, size_t size);
+
 IPCStatus ShMemTxOpen::operator()(ShMemTransmitter* transmitter) {
   return TxOpen(transmitter, Key);
 }
@@ -51,6 +69,6 @@ double RunShmDriver(size_t bufSize, const char* srcFile) {
     RxDriver<ShMemReceiver>(bufSize, "out", openRxFoo);
     exit(0);
   }
-  
+
   return 0;
 }

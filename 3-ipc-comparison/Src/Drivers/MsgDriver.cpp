@@ -1,5 +1,23 @@
 #include "Drivers/MsgDriver.hpp"
 
+#include "IPC/MQRx.h"
+#include "IPC/MQTx.h"
+
+struct MQTxOpen {
+  key_t Key;
+
+  IPCStatus operator()(MQTransmitter* transmitter);
+};
+
+struct MQRxOpen {
+  key_t Key;
+
+  IPCStatus operator()(MQReceiver* receiver);
+};
+
+static IPCStatus CreateMsg(key_t key);
+static IPCStatus DeleteMsg(key_t key);
+
 IPCStatus MQTxOpen::operator()(MQTransmitter* transmitter) {
   return TxOpen(transmitter, Key);
 }

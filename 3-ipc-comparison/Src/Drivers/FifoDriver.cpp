@@ -1,5 +1,23 @@
 #include "Drivers/FifoDriver.hpp"
 
+#include "IPC/FIFORx.h"
+#include "IPC/FIFOTx.h"
+
+struct FifoTxOpen {
+  const char* FifoFile;
+
+  IPCStatus operator()(FifoTransmitter* transmitter);
+};
+
+struct FifoRxOpen {
+  const char* FifoFile;
+
+  IPCStatus operator()(FifoReceiver* receiver);
+};
+
+static IPCStatus CreateFifo(const char* path);
+static IPCStatus DeleteFifo(const char* path);
+
 IPCStatus FifoTxOpen::operator()(FifoTransmitter* transmitter) {
   return TxOpen(transmitter, FifoFile);
 }
