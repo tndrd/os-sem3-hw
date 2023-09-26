@@ -7,3 +7,4 @@ set(CMAKE_C_FLAGS "-Werror -g")
 # Projects
 add_subdirectory(1-shell-emulator)
 add_subdirectory(2-duplex-pipe)
+add_subdirectory(3-ipc-comparison)

@@ -1,25 +1,13 @@
-#include <assert.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/shm.h>
-#include <unistd.h>
+#include "IPC/ShMemTx.h"
 
-#include "Helpers.h"
-#include "IPCStatus.h"
-
-typedef struct {
-  char* Ptr;
-  size_t Size;
-} ShMemTransmitter;
-
-IPCStatus Init(ShMemTransmitter* self, size_t size) {
+IPCStatus TxInit(ShMemTransmitter* self, size_t size) {
   if (!self) return IPC_BAD_ARG_PTR;
   self->Size = size;
 
   return IPC_SUCCESS;
 }
 
-IPCStatus Open(ShMemTransmitter* self, key_t key) {
+IPCStatus TxOpen(ShMemTransmitter* self, key_t key) {
   if (!self) return IPC_BAD_ARG_PTR;
 
   int id = shmget(key, self->Size, 666);
@@ -32,7 +20,7 @@ IPCStatus Open(ShMemTransmitter* self, key_t key) {
   return IPC_SUCCESS;
 }
 
-IPCStatus Close(ShMemTransmitter* self) {
+IPCStatus TxClose(ShMemTransmitter* self) {
   if (!self) return IPC_BAD_ARG_PTR;
 
   if (shmdt(self->Ptr) < 0)
@@ -41,14 +29,14 @@ IPCStatus Close(ShMemTransmitter* self) {
   return IPC_SUCCESS;
 }
 
-IPCStatus Transmit(ShMemTransmitter* self, int srcFd) {
+IPCStatus TxTransmit(ShMemTransmitter* self, int srcFd) {
   if (!self) return IPC_BAD_ARG_PTR;
   
   size_t nRead;
   int readDone = 0;
   IPCStatus status;
 
-  self->Ptr[0] = 1;
+  self->Ptr[0] = 0;
   while (self->Ptr[0] != 2) {
     while(self->Ptr[0] == 1);
     status = ReadToBuf(self->Ptr + 1 + sizeof(size_t), self->Size - 1 - sizeof(size_t), srcFd, &nRead, &readDone);

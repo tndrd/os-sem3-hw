@@ -1,25 +1,13 @@
-#include <assert.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/shm.h>
-#include <unistd.h>
+#include "IPC/ShMemRx.h"
 
-#include "Helpers.h"
-#include "IPCStatus.h"
-
-typedef struct {
-  char* Ptr;
-  size_t Size;
-} ShMemReceiver;
-
-IPCStatus Init(ShMemReceiver* self, size_t size) {
+IPCStatus RxInit(ShMemReceiver* self, size_t size) {
   if (!self) return IPC_BAD_ARG_PTR;
   self->Size = size;
 
   return IPC_SUCCESS;
 }
 
-IPCStatus Open(ShMemReceiver* self, key_t key) {
+IPCStatus RxOpen(ShMemReceiver* self, key_t key) {
   if (!self) return IPC_BAD_ARG_PTR;
 
   int id = shmget(key, self->Size, 666);
@@ -32,7 +20,7 @@ IPCStatus Open(ShMemReceiver* self, key_t key) {
   return IPC_SUCCESS;
 }
 
-IPCStatus Close(ShMemReceiver* self) {
+IPCStatus RxClose(ShMemReceiver* self) {
   if (!self) return IPC_BAD_ARG_PTR;
 
   if (shmdt(self->Ptr) < 0)
@@ -41,7 +29,7 @@ IPCStatus Close(ShMemReceiver* self) {
   return IPC_SUCCESS;
 }
 
-IPCStatus Receive(ShMemReceiver* self, int destFd) {
+IPCStatus RxReceive(ShMemReceiver* self, int destFd) {
   if (!self) return IPC_BAD_ARG_PTR;
   
   size_t nWrite;
@@ -56,6 +44,8 @@ IPCStatus Receive(ShMemReceiver* self, int destFd) {
       self->Ptr[0] = 0;
     else break;
   }
+
+  self->Ptr[0] = 0; // Mark memory State as WRITE
 
   return IPC_SUCCESS;
 }
