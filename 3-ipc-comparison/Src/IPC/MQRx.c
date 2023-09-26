@@ -14,7 +14,7 @@ IPCStatus RxInit(MQReceiver* self, size_t size) {
 IPCStatus RxOpen(MQReceiver* self, key_t key) {
   if (!self) return IPC_BAD_ARG_PTR;
 
-  int id = msgget(key, S_IRUSR | S_IRGRP | S_IROTH);
+  int id = msgget(key, 0);
   if (id < 0) return IPC_ERRNO_ERROR;
 
   self->MqId = id;

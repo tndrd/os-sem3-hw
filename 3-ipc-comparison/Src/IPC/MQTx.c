@@ -23,7 +23,7 @@ IPCStatus TxInit(MQTransmitter* self, size_t size) {
 IPCStatus TxOpen(MQTransmitter* self, key_t key) {
   if (!self) return IPC_BAD_ARG_PTR;
 
-  int id = msgget(key, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT);
+  int id = msgget(key, 0);
   if (id < 0) return IPC_ERRNO_ERROR;
 
   self->MqId = id;

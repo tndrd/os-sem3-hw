@@ -1,9 +1,17 @@
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
 
 #include "Driver.hpp"
-#include "IPC/FIFOTx.h"
 #include "IPC/FIFORx.h"
+#include "IPC/FIFOTx.h"
+
+#define FIFO_FILE "FIFO"
 
 struct FifoTxOpen {
   const char* FifoFile;
@@ -21,24 +29,46 @@ struct FifoRxOpen {
   }
 };
 
+IPCStatus CreateFifo(const char* path) {
+  if (!path) return IPC_BAD_ARG_PTR;
+
+  int ret = mknod(path, S_IFIFO, 0);
+  if (ret < 0 && errno != EEXIST) return IPC_ERRNO_ERROR;
+
+  return IPC_SUCCESS;
+}
+
+IPCStatus DeleteFifo(const char* path) {
+  if (!path) return IPC_BAD_ARG_PTR;
+
+  return (unlink(path) < 0) ? IPC_ERRNO_ERROR : IPC_SUCCESS;
+}
+
 int main(int argc, char* argv[]) {
-  if (argc != 4)
-    PrintMessageAndExit("Expected bufSize, fifoFile and srcFile arguments");
+  IPCStatus status;
+
+  if (argc != 3) PrintMessageAndExit("Expected bufSize and srcFile arguments");
 
   size_t bufSize = std::stoul(argv[1]);
-  const char* fifoFile = argv[2];
-  const char* srcFile = argv[3];
+  const char* srcFile = argv[2];
 
-  FifoTxOpen openTxFoo{fifoFile};
-  FifoRxOpen openRxFoo{fifoFile};
+  if ((status = CreateFifo(FIFO_FILE)) != IPC_SUCCESS)
+    PrintIPCErrorAndExit("Failed to create fifo", status);
+
+  FifoTxOpen openTxFoo{FIFO_FILE};
+  FifoRxOpen openRxFoo{FIFO_FILE};
 
   pid_t pid = fork();
 
   if (pid < 0)
     PrintErrnoAndExit("Failed to fork");
-  else if (pid > 0) // Parent
+  else if (pid > 0) {  // Parent
     TxDriver<FifoTransmitter>(bufSize, srcFile, openTxFoo);
-  else // Child
+    wait(NULL);
+
+    if ((status = DeleteFifo(FIFO_FILE)) != IPC_SUCCESS)
+      PrintIPCErrorAndExit("Failed to delete fifo", status);
+  } else  // Child
     RxDriver<FifoReceiver>(bufSize, "out", openRxFoo);
 
   return 0;
