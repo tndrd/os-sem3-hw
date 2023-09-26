@@ -1,36 +1,21 @@
-#include <sys/wait.h>
+#include "Drivers/MsgDriver.hpp"
 
-#include <iostream>
-#include <string>
+IPCStatus MQTxOpen::operator()(MQTransmitter* transmitter) {
+  return TxOpen(transmitter, Key);
+}
 
-#include "Driver.hpp"
-#include "IPC/MQRx.h"
-#include "IPC/MQTx.h"
+IPCStatus MQRxOpen::operator()(MQReceiver* receiver) {
+  return RxOpen(receiver, Key);
+}
 
-#define MSG_KEY 69
-
-struct MQTxOpen {
-  key_t Key;
-
-  IPCStatus operator()(MQTransmitter* transmitter) {
-    return TxOpen(transmitter, Key);
-  }
-};
-
-struct MQRxOpen {
-  key_t Key;
-
-  IPCStatus operator()(MQReceiver* receiver) { return RxOpen(receiver, Key); }
-};
-
-IPCStatus CreateMsg(key_t key) {
+static IPCStatus CreateMsg(key_t key) {
   if (msgget(key, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT) < 0)
     return IPC_ERRNO_ERROR;
 
   return IPC_SUCCESS;
 }
 
-IPCStatus DeleteMsg(key_t key) {
+static IPCStatus DeleteMsg(key_t key) {
   int id = msgget(key, 0);
   if (id < 0) return IPC_ERRNO_ERROR;
 
@@ -39,13 +24,8 @@ IPCStatus DeleteMsg(key_t key) {
   return IPC_SUCCESS;
 }
 
-int main(int argc, char* argv[]) {
+double RunMsgDriver(size_t bufSize, const char* srcFile) {
   IPCStatus status;
-
-  if (argc != 3) PrintMessageAndExit("Expected bufSize and srcFile arguments");
-
-  size_t bufSize = std::stoul(argv[1]);
-  const char* srcFile = argv[2];
 
   if ((status = CreateMsg(MSG_KEY)) != IPC_SUCCESS)
     PrintIPCErrorAndExit("Failed to create msgqueue", status);
@@ -53,6 +33,7 @@ int main(int argc, char* argv[]) {
   MQTxOpen openTxFoo{MSG_KEY};
   MQRxOpen openRxFoo{MSG_KEY};
 
+  clock_t startTime = clock();
   pid_t pid = fork();
 
   if (pid < 0)
@@ -63,8 +44,12 @@ int main(int argc, char* argv[]) {
 
     if ((status = DeleteMsg(MSG_KEY)) != IPC_SUCCESS)
       PrintIPCErrorAndExit("Failed to delete msgqueue", status);
-  } else  // Child
+
+    return (clock() - startTime) / CLOCKS_PER_SEC;
+  } else {  // Child
     RxDriver<MQReceiver>(bufSize, "out", openRxFoo);
+    exit(0);
+  }
 
   return 0;
 }

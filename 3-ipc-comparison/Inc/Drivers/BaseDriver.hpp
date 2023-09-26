@@ -11,20 +11,9 @@
 #include <iostream>
 #include <string>
 
-void PrintErrnoAndExit(const std::string& msg) {
-  perror(msg.c_str());
-  exit(1);
-}
-
-void PrintIPCErrorAndExit(const std::string& msg, IPCStatus status) {
-  std::cerr << msg + ": " + std::string{GetErrorDescription(status)} << std::endl;
-  exit(1);
-}
-
-void PrintMessageAndExit(const std::string& msg) {
-  std::cerr << msg << std::endl;
-  exit(1);
-}
+void PrintErrnoAndExit(const std::string& msg);
+void PrintIPCErrorAndExit(const std::string& msg, IPCStatus status);
+void PrintMessageAndExit(const std::string& msg);
 
 template <typename Transmitter, typename F>
 void TxDriver(size_t bufSize, const char* srcPath, F openFoo) {
@@ -52,7 +41,6 @@ void TxDriver(size_t bufSize, const char* srcPath, F openFoo) {
   double timeSpent = (double)(endTime - startTime) / CLOCKS_PER_SEC;
 
   std::cerr << "Transmission done in " << timeSpent << " seconds" << std::endl;
-  std::cout << int(timeSpent) << std::endl;
 
   TxClose(&transmitter);
 }
@@ -72,7 +60,7 @@ void RxDriver(size_t bufSize, const char* destPath, F openFoo) {
   if ((destFd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
     PrintErrnoAndExit("Failed to open destination file");
 
-  printf("Running receiver driver...\n");
+  std::cerr << "Running transmitter driver... \n" << std::endl;
 
   time_t startTime = clock();
 
@@ -82,7 +70,7 @@ void RxDriver(size_t bufSize, const char* destPath, F openFoo) {
   clock_t endTime = clock();
   double timeSpent = (double)(endTime - startTime) / CLOCKS_PER_SEC;
 
-  printf("Receiving done in %lf seconds\n", timeSpent);
+  std::cerr << "Transmission done in " << timeSpent << " seconds" << std::endl;
 
   RxClose(&receiver);
 }

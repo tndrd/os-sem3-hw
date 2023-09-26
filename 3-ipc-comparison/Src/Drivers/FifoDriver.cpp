@@ -1,35 +1,14 @@
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include "Drivers/FifoDriver.hpp"
 
-#include <iostream>
-#include <string>
+IPCStatus FifoTxOpen::operator()(FifoTransmitter* transmitter) {
+  return TxOpen(transmitter, FifoFile);
+}
 
-#include "Driver.hpp"
-#include "IPC/FIFORx.h"
-#include "IPC/FIFOTx.h"
+IPCStatus FifoRxOpen::operator()(FifoReceiver* receiver) {
+  return RxOpen(receiver, FifoFile);
+}
 
-#define FIFO_FILE "FIFO"
-
-struct FifoTxOpen {
-  const char* FifoFile;
-
-  IPCStatus operator()(FifoTransmitter* transmitter) {
-    return TxOpen(transmitter, FifoFile);
-  }
-};
-
-struct FifoRxOpen {
-  const char* FifoFile;
-
-  IPCStatus operator()(FifoReceiver* receiver) {
-    return RxOpen(receiver, FifoFile);
-  }
-};
-
-IPCStatus CreateFifo(const char* path) {
+static IPCStatus CreateFifo(const char* path) {
   if (!path) return IPC_BAD_ARG_PTR;
 
   int ret = mknod(path, S_IFIFO, 0);
@@ -38,19 +17,14 @@ IPCStatus CreateFifo(const char* path) {
   return IPC_SUCCESS;
 }
 
-IPCStatus DeleteFifo(const char* path) {
+static IPCStatus DeleteFifo(const char* path) {
   if (!path) return IPC_BAD_ARG_PTR;
 
   return (unlink(path) < 0) ? IPC_ERRNO_ERROR : IPC_SUCCESS;
 }
 
-int main(int argc, char* argv[]) {
+double RunFifoDriver(size_t bufSize, const char* srcFile) {
   IPCStatus status;
-
-  if (argc != 3) PrintMessageAndExit("Expected bufSize and srcFile arguments");
-
-  size_t bufSize = std::stoul(argv[1]);
-  const char* srcFile = argv[2];
 
   if ((status = CreateFifo(FIFO_FILE)) != IPC_SUCCESS)
     PrintIPCErrorAndExit("Failed to create fifo", status);
@@ -58,6 +32,7 @@ int main(int argc, char* argv[]) {
   FifoTxOpen openTxFoo{FIFO_FILE};
   FifoRxOpen openRxFoo{FIFO_FILE};
 
+  clock_t startTime = clock();
   pid_t pid = fork();
 
   if (pid < 0)
@@ -68,8 +43,12 @@ int main(int argc, char* argv[]) {
 
     if ((status = DeleteFifo(FIFO_FILE)) != IPC_SUCCESS)
       PrintIPCErrorAndExit("Failed to delete fifo", status);
-  } else  // Child
+
+    return (clock() - startTime) / CLOCKS_PER_SEC;
+  } else {  // Child
     RxDriver<FifoReceiver>(bufSize, "out", openRxFoo);
+    exit(0);
+  }
 
   return 0;
 }
