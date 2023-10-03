@@ -35,18 +35,16 @@ IPCStatus TxTransmit(ShMemTransmitter* self, int srcFd) {
   int readDone = 0;
   IPCStatus status;
 
-  self->Ptr[0] = 0;
-  while (self->Ptr[0] != 2) {
-    while (self->Ptr[0] == 1)
+  while (GetShmState(self->Ptr) != SHM_SYNC_FINISH) {
+    while (GetShmState(self->Ptr) == SHM_SYNC_READING)
       ;
-    status =
-        ReadToBuf(self->Ptr + 1 + sizeof(size_t),
-                  self->Size - 1 - sizeof(size_t), srcFd, &nRead, &readDone);
-    *((size_t*)(self->Ptr + 1)) = nRead;
+    status = ReadToBuf(GetShmBuf(self->Ptr), GetShmCapacity(self->Size), srcFd,
+                       &nRead, &readDone);
+    SetShmSize(self->Ptr, nRead);
     if (readDone)
-      self->Ptr[0] = 2;
+      SetShmState(self->Ptr, SHM_SYNC_FINISH);
     else
-      self->Ptr[0] = 1;
+      SetShmState(self->Ptr, SHM_SYNC_READING);
   }
 
   return IPC_SUCCESS;

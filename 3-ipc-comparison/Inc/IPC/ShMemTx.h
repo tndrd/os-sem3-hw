@@ -8,6 +8,7 @@
 
 #include "Helpers.h"
 #include "IPCStatus.h"
+#include "ShMemSync.h"
 
 typedef struct {
   char* Ptr;
