@@ -6,29 +6,30 @@
 struct ShMemTxOpen {
   key_t Key;
 
-  IPCStatus operator()(ShMemTransmitter* transmitter);
+  IPCStatus operator()(ShMemTransmitter* transmitter) {
+    return TxOpen(transmitter, Key);
+  }
 };
 
 struct ShMemRxOpen {
   key_t Key;
 
-  IPCStatus operator()(ShMemReceiver* receiver);
+  IPCStatus operator()(ShMemReceiver* receiver) {
+    return RxOpen(receiver, Key);
+  }
 };
 
-static IPCStatus CreateShm(key_t key, size_t size);
-static IPCStatus DeleteShm(key_t key, size_t size);
-
-IPCStatus ShMemTxOpen::operator()(ShMemTransmitter* transmitter) {
-  return TxOpen(transmitter, Key);
-}
-
-IPCStatus ShMemRxOpen::operator()(ShMemReceiver* receiver) {
-  return RxOpen(receiver, Key);
-}
-
 static IPCStatus CreateShm(key_t key, size_t size) {
-  if (shmget(key, size, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT) < 0)
+  int id;
+  if ((id = shmget(key, size, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT)) < 0)
     return IPC_ERRNO_ERROR;
+
+  char* newPtr = (char*)shmat(id, NULL, 0);
+  if (newPtr == (void*)(-1)) return IPC_ERRNO_ERROR;
+
+  SetShmState(newPtr, SHM_SYNC_WRITING);
+
+  if (shmdt(newPtr) < 0) return IPC_ERRNO_ERROR;
 
   return IPC_SUCCESS;
 }
@@ -64,7 +65,7 @@ double RunShmDriver(size_t bufSize, const char* srcFile) {
     if ((status = DeleteShm(SHM_KEY, bufSize)) != IPC_SUCCESS)
       PrintIPCErrorAndExit("Failed to delete shared memory", status);
 
-    return (clock() - startTime) / CLOCKS_PER_SEC;
+    return double(clock() - startTime) / CLOCKS_PER_SEC;
   } else {  // Child
     RxDriver<ShMemReceiver>(bufSize, "out", openRxFoo);
     exit(0);

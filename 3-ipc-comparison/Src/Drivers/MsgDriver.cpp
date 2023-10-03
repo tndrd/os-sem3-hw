@@ -6,25 +6,18 @@
 struct MQTxOpen {
   key_t Key;
 
-  IPCStatus operator()(MQTransmitter* transmitter);
+  IPCStatus operator()(MQTransmitter* transmitter) {
+    return TxOpen(transmitter, Key);
+  }
 };
 
 struct MQRxOpen {
   key_t Key;
 
-  IPCStatus operator()(MQReceiver* receiver);
+  IPCStatus operator()(MQReceiver* receiver) {
+    return RxOpen(receiver, Key);
+  }
 };
-
-static IPCStatus CreateMsg(key_t key);
-static IPCStatus DeleteMsg(key_t key);
-
-IPCStatus MQTxOpen::operator()(MQTransmitter* transmitter) {
-  return TxOpen(transmitter, Key);
-}
-
-IPCStatus MQRxOpen::operator()(MQReceiver* receiver) {
-  return RxOpen(receiver, Key);
-}
 
 static IPCStatus CreateMsg(key_t key) {
   if (msgget(key, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT) < 0)
@@ -63,7 +56,7 @@ double RunMsgDriver(size_t bufSize, const char* srcFile) {
     if ((status = DeleteMsg(MSG_KEY)) != IPC_SUCCESS)
       PrintIPCErrorAndExit("Failed to delete msgqueue", status);
 
-    return (clock() - startTime) / CLOCKS_PER_SEC;
+    return double(clock() - startTime) / CLOCKS_PER_SEC;
   } else {  // Child
     RxDriver<MQReceiver>(bufSize, "out", openRxFoo);
     exit(0);

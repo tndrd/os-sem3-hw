@@ -6,25 +6,18 @@
 struct FifoTxOpen {
   const char* FifoFile;
 
-  IPCStatus operator()(FifoTransmitter* transmitter);
+  IPCStatus operator()(FifoTransmitter* transmitter) {
+    return TxOpen(transmitter, FifoFile);
+  }
 };
 
 struct FifoRxOpen {
   const char* FifoFile;
 
-  IPCStatus operator()(FifoReceiver* receiver);
+  IPCStatus operator()(FifoReceiver* receiver) {
+    return RxOpen(receiver, FifoFile);
+  }
 };
-
-static IPCStatus CreateFifo(const char* path);
-static IPCStatus DeleteFifo(const char* path);
-
-IPCStatus FifoTxOpen::operator()(FifoTransmitter* transmitter) {
-  return TxOpen(transmitter, FifoFile);
-}
-
-IPCStatus FifoRxOpen::operator()(FifoReceiver* receiver) {
-  return RxOpen(receiver, FifoFile);
-}
 
 static IPCStatus CreateFifo(const char* path) {
   if (!path) return IPC_BAD_ARG_PTR;
@@ -62,7 +55,7 @@ double RunFifoDriver(size_t bufSize, const char* srcFile) {
     if ((status = DeleteFifo(FIFO_FILE)) != IPC_SUCCESS)
       PrintIPCErrorAndExit("Failed to delete fifo", status);
 
-    return (clock() - startTime) / CLOCKS_PER_SEC;
+    return double(clock() - startTime) / CLOCKS_PER_SEC;
   } else {  // Child
     RxDriver<FifoReceiver>(bufSize, "out", openRxFoo);
     exit(0);
