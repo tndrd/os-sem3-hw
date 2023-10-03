@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE  // For execvpe()
+#endif
 
 #include <assert.h>
 #include <fcntl.h>
