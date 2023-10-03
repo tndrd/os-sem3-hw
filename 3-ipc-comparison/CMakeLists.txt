@@ -3,6 +3,8 @@ project(3-ipc-comparison C CXX)
 
 include_directories(Inc/)
 
+# IPC Primitives
+
 add_library(Helpers Src/IPC/Helpers.c)
 add_library(IPCStatus Src/IPC/IPCStatus.c)
 
@@ -11,6 +13,8 @@ target_link_libraries(FIFOTx PRIVATE Helpers)
 
 add_library(FIFORx Src/IPC/FIFORx.c)
 target_link_libraries(FIFORx PRIVATE Helpers)
+
+add_library(ShMemSync Src/IPC/ShMemSync.c)
 
 add_library(ShMemTx Src/IPC/ShMemTx.c)
 target_link_libraries(ShMemTx PRIVATE Helpers)
@@ -24,11 +28,38 @@ target_link_libraries(MQTx PRIVATE Helpers)
 add_library(MQRx Src/IPC/MQRx.c)
 target_link_libraries(MQRx PRIVATE Helpers)
 
-add_executable(Fifo Src/Fifo.cpp)
-target_link_libraries(Fifo PRIVATE FIFOTx FIFORx IPCStatus)
+# Drivers
 
-add_executable(Shm Src/Shm.cpp)
-target_link_libraries(Shm PRIVATE ShMemTx ShMemRx IPCStatus)
+add_library(BaseDriver Src/Drivers/BaseDriver.cpp)
+target_link_libraries(BaseDriver PRIVATE IPCStatus)
 
-add_executable(Msg Src/Msg.cpp)
-target_link_libraries(Msg PRIVATE MQTx MQRx IPCStatus)
+add_library(FifoDriver Src/Drivers/FifoDriver.cpp)
+target_link_libraries(FifoDriver PRIVATE FIFOTx FIFORx BaseDriver)
+
+add_library(ShmDriver Src/Drivers/ShmDriver.cpp)
+target_link_libraries(ShmDriver PRIVATE ShMemTx ShMemRx BaseDriver ShMemSync)
+
+add_library(MsgDriver Src/Drivers/MsgDriver.cpp)
+target_link_libraries(MsgDriver PRIVATE MQTx MQRx BaseDriver)
+
+# Executables
+
+add_executable(Fifo Src/Executables/Fifo.cpp)
+target_link_libraries(Fifo PRIVATE FifoDriver)
+
+add_executable(Shm Src/Executables/Shm.cpp)
+target_link_libraries(Shm PRIVATE ShmDriver)
+
+add_executable(Msg Src/Executables/Msg.cpp)
+target_link_libraries(Msg PRIVATE MsgDriver)
+
+# Benchmarks
+
+add_executable(FifoBenchmark Src/Executables/FifoBenchmark.cpp)
+target_link_libraries(FifoBenchmark PRIVATE FifoDriver)
+
+add_executable(ShmBenchmark Src/Executables/ShmBenchmark.cpp)
+target_link_libraries(ShmBenchmark PRIVATE ShmDriver)
+
+add_executable(MsgBenchmark Src/Executables/MsgBenchmark.cpp)
+target_link_libraries(MsgBenchmark PRIVATE MsgDriver)
