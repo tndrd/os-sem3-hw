@@ -57,10 +57,10 @@ void RxDriver(size_t bufSize, const char* destPath, F openFoo) {
     PrintIPCErrorAndExit("Failed to open ipc class", status);
 
   int destFd;
-  if ((destFd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
+  if ((destFd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IWGRP | S_IWOTH)) < 0)
     PrintErrnoAndExit("Failed to open destination file");
 
-  std::cerr << "Running transmitter driver... \n" << std::endl;
+  std::cerr << "Running receiver driver... \n" << std::endl;
 
   time_t startTime = clock();
 
@@ -70,7 +70,7 @@ void RxDriver(size_t bufSize, const char* destPath, F openFoo) {
   clock_t endTime = clock();
   double timeSpent = (double)(endTime - startTime) / CLOCKS_PER_SEC;
 
-  std::cerr << "Transmission done in " << timeSpent << " seconds" << std::endl;
+  std::cerr << "Receiving done in " << timeSpent << " seconds" << std::endl;
 
   RxClose(&receiver);
 }
