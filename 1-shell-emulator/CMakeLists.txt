@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.0)
 project(1-shell-emulator C CXX)
 
 include_directories(Inc/)
-add_subdirectory(../deps/googletest bin)
 
 add_library(ShellStatus Src/ShellStatus.c)
 
