@@ -17,8 +17,5 @@ target_link_libraries(Shell PUBLIC TokenParser Executor)
 add_executable(${PROJECT_NAME} Src/Main.c)
 target_link_libraries(${PROJECT_NAME} PUBLIC Shell)
 
-add_executable(TokenParserTest Tests/TokenParserTest.cc)
-target_link_libraries(TokenParserTest PRIVATE GTest::gtest_main TokenParser)
-
-add_executable(ExecutorTest Tests/ExecutorTest.cc)
-target_link_libraries(ExecutorTest PRIVATE GTest::gtest_main Executor TokenParser)
+add_executable(RunTests Tests/RunTests.cc)
+target_link_libraries(RunTests PRIVATE GTest::gtest_main Executor TokenParser)
