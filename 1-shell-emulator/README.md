@@ -3,8 +3,8 @@ The goal is to create emulator of Linux shell. The shell should support I/O redi
 
 # How to run
 ```bash
-cd build/1-shell-emulator/
-./1-shell-emulator
-```
+cd build/1-shell-emulator
 
-> Maybe try with sudo if you have permission error
+./1-shell-emulator # Main executable, enjoy!
+./RunTests         # Tests, in case something goes wrong
+```
