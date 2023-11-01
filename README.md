@@ -10,4 +10,4 @@ cd build
 cmake ..
 cmake --build .
 ```
-> The executables are placed into ```/build/<PROJECT_NAME>/``` directory.
+> The executables are located in ```/build/<PROJECT_NAME>/``` directories.
