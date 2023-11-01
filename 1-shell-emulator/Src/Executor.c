@@ -197,7 +197,7 @@ static ShellStatus ProcessOperator(ExecutorContext* ctx, char** tokens,
     }
 
     case TOKEN_FILE_OUTPUT: {
-      int newFd = open(tokens[*endTokenPtr + 1], O_CREAT | O_WRONLY | O_TRUNC);
+      int newFd = open(tokens[*endTokenPtr + 1], O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
       if (newFd < 0) return SH_ERRNO_ERROR;
 
       ShellStatus status = SetWriteFd(ctx, newFd);
