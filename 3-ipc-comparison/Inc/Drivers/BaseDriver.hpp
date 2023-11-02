@@ -57,7 +57,7 @@ void RxDriver(size_t bufSize, const char* destPath, F openFoo) {
     PrintIPCErrorAndExit("Failed to open ipc class", status);
 
   int destFd;
-  if ((destFd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IWGRP | S_IWOTH)) < 0)
+  if ((destFd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) < 0)
     PrintErrnoAndExit("Failed to open destination file");
 
   std::cerr << "Running receiver driver... \n" << std::endl;
