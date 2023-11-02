@@ -6,8 +6,8 @@ echo "Running driver..."
 ./2-duplex-pipe 100000 < 4gb.in > 4gb.out 2> /dev/null
 
 echo "Comparing md5..."
-(md5sum 100b.in; md5sum 100b.out) | python3 ../../2-duplex-pipe/Tests/CompareMd5.py 
-(md5sum 42b.in; md5sum 42b.out) | python3 ../../2-duplex-pipe/Tests/CompareMd5.py 
-(md5sum 115b.in; md5sum 115b.out) | python3 ../../2-duplex-pipe/Tests/CompareMd5.py 
-(md5sum 1mb.in; md5sum 1mb.out) | python3 ../../2-duplex-pipe/Tests/CompareMd5.py 
-(md5sum 4gb.in; md5sum 4gb.out) | python3 ../../2-duplex-pipe/Tests/CompareMd5.py 
+(md5sum 100b.in; md5sum 100b.out) | python3 CompareMd5.py 
+(md5sum 42b.in; md5sum 42b.out) | python3 CompareMd5.py 
+(md5sum 115b.in; md5sum 115b.out) | python3 CompareMd5.py 
+(md5sum 1mb.in; md5sum 1mb.out) | python3 CompareMd5.py 
+(md5sum 4gb.in; md5sum 4gb.out) | python3 CompareMd5.py 
