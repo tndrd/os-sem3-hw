@@ -35,14 +35,14 @@ IPCStatus RxReceive(ShMemReceiver* self, int destFd) {
   int readDone = 0;
   IPCStatus status;
 
-  while (GetShmState(self->Ptr) != SHM_SYNC_FINISH) {
+  do {
     while (GetShmState(self->Ptr) == SHM_SYNC_WRITING)
       ;
     status =
         WriteToFd(GetShmBuf(self->Ptr), GetShmSize(self->Ptr), destFd, &nWrite);
     if (GetShmState(self->Ptr) == SHM_SYNC_READING)
       SetShmState(self->Ptr, SHM_SYNC_WRITING);
-  }
+  } while (GetShmState(self->Ptr) != SHM_SYNC_FINISH);
 
   return IPC_SUCCESS;
 }
