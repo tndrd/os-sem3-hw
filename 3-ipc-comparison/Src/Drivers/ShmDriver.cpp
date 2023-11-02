@@ -21,7 +21,7 @@ struct ShMemRxOpen {
 
 static IPCStatus CreateShm(key_t key, size_t size) {
   int id;
-  if ((id = shmget(key, size, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT)) < 0)
+  if ((id = shmget(key, size, IPC_CREAT | 0666)) < 0)
     return IPC_ERRNO_ERROR;
 
   char* newPtr = (char*)shmat(id, NULL, 0);

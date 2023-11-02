@@ -22,7 +22,7 @@ struct FifoRxOpen {
 static IPCStatus CreateFifo(const char* path) {
   if (!path) return IPC_BAD_ARG_PTR;
 
-  int ret = mknod(path, S_IFIFO, 0);
+  int ret = mknod(path, S_IFIFO | 0666, 0);
   if (ret < 0 && errno != EEXIST) return IPC_ERRNO_ERROR;
 
   return IPC_SUCCESS;

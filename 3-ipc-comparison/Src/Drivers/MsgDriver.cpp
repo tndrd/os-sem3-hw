@@ -20,7 +20,7 @@ struct MQRxOpen {
 };
 
 static IPCStatus CreateMsg(key_t key) {
-  if (msgget(key, S_IWUSR | S_IWGRP | S_IWOTH | IPC_CREAT) < 0)
+  if (msgget(key, IPC_CREAT | 0666) < 0)
     return IPC_ERRNO_ERROR;
 
   return IPC_SUCCESS;
