@@ -21,24 +21,29 @@ struct ShMemRxOpen {
 
 static IPCStatus CreateShm(key_t key, size_t size) {
   int id;
-  if ((id = shmget(key, size, IPC_CREAT | 0666)) < 0)
-    return IPC_ERRNO_ERROR;
+  if ((id = shmget(key, size + sizeof(ShMemHeader), IPC_CREAT | 0666)) < 0) return IPC_ERRNO_ERROR;
 
   char* newPtr = (char*)shmat(id, NULL, 0);
   if (newPtr == (void*)(-1)) return IPC_ERRNO_ERROR;
 
-  SetShmState(newPtr, SHM_SYNC_WRITING);
+  IPCStatus status = ShMemHeaderInit(GetShMemHeader(newPtr));
+  if (status != IPC_SUCCESS) return status;
 
   if (shmdt(newPtr) < 0) return IPC_ERRNO_ERROR;
-
   return IPC_SUCCESS;
 }
 
 static IPCStatus DeleteShm(key_t key, size_t size) {
-  int id = shmget(key, size, 0);
-
+  int id = shmget(key, size + sizeof(ShMemHeader), 0);
   if (id < 0) return IPC_ERRNO_ERROR;
 
+  char* ptr = (char*)shmat(id, NULL, 0);
+  if (ptr == (void*)(-1)) return IPC_ERRNO_ERROR;
+
+  IPCStatus status = ShMemHeaderDestroy(GetShMemHeader(ptr));
+  if (status != IPC_SUCCESS) return status;
+
+  if (shmdt(ptr) < 0) return IPC_ERRNO_ERROR;
   if (shmctl(id, IPC_RMID, NULL) < 0) return IPC_ERRNO_ERROR;
 
   return IPC_SUCCESS;
