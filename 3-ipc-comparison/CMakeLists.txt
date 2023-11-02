@@ -15,6 +15,7 @@ add_library(FIFORx Src/IPC/FIFORx.c)
 target_link_libraries(FIFORx PRIVATE Helpers)
 
 add_library(ShMemSync Src/IPC/ShMemSync.c)
+target_link_libraries(ShMemSync PRIVATE pthread)
 
 add_library(ShMemTx Src/IPC/ShMemTx.c)
 target_link_libraries(ShMemTx PRIVATE Helpers)
@@ -72,3 +73,4 @@ configure_file(Tests/GenTests.py ${CMAKE_CURRENT_BINARY_DIR}/GenTests.py COPYONL
 # Copy benchmarks to build directory
 configure_file(Scripts/GenBenchmarkData.sh ${CMAKE_CURRENT_BINARY_DIR}/GenBenchmarkData.sh COPYONLY)
 configure_file(Scripts/RunBenchmarks.sh ${CMAKE_CURRENT_BINARY_DIR}/RunBenchmarks.sh COPYONLY)
+configure_file(Scripts/Plot.py ${CMAKE_CURRENT_BINARY_DIR}/Plot.py COPYONLY)
