@@ -1,44 +1,77 @@
 #pragma once
-
-#include "TnStatus.h"
-#include "WorkerContent.h"
-#include <assert.h>
-#include <math.h>
 #include <pthread.h>
 
-typedef enum
-{
-  WORKER_INIT,
-  WORKER_READY,
+#include "Status.h"
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+
+struct WorkerImpl;
+typedef size_t WorkerID;
+
+typedef TnStatus (*WorkerFooT)(const void* args, void* result);
+typedef void (*WorkerCallbackFooT)(struct WorkerImpl* worker, void* args);
+
+typedef struct {
+  void* Args;
+  WorkerCallbackFooT Function;
+} WorkerCallbackT;
+
+typedef struct {
+  WorkerFooT Function;
+  const void* Args;
+  void* Result;
+  TnStatus* Status;
+} WorkerTask;
+
+typedef enum {
+  WORKER_FREE,
   WORKER_BUSY,
   WORKER_DONE,
-  WORKER_STOP,
-  WORKER_ERROR
 } WorkerState;
 
-typedef struct
-{
-  WorkerState State;
-  TnStatus Error;
-  WorkerTLS TLS;
-
-  WorkerFoo Target;
-  WorkerArgs Args;
-  WorkerResult Result;
-
+typedef struct WorkerImpl {
+  WorkerID ID;
   pthread_t Thread;
-  int Errno;
+
+  /* Sync */
+  pthread_mutex_t Mutex;
+  pthread_cond_t Cond;
+
+  /* Const during thread execution */
+  WorkerCallbackT Callback;
+
+  /* Main-W, Thread-R */
+  WorkerTask Task;
+  int HasTask;
+  int ResultBeenRead;
+  int Active;
+
+  /* Main-R, Thread-W */
+  WorkerState State;
+
 } Worker;
 
-static TnStatus WorkerValidatePrecondition(Worker *worker);
-static TnStatus WorkerValidatePostcondition(Worker *worker);
-static void* WorkerLoop(void * ptr);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-TnStatus WorkerInit(Worker *worker);
-const char *WorkerGetErrorDescription(TnStatus status, const Worker *worker);
-TnStatus WorkerSetTarget(Worker *worker, WorkerFoo foo);
-TnStatus WorkerSetArgs(Worker *worker, WorkerArgs *args);
-TnStatus WorkerRun(Worker *worker);
-TnStatus WorkerReadResult(Worker *worker, WorkerResult *result);
-TnStatus WorkerStop(Worker *worker);
-TnStatus WorkerGetState(const Worker *worker, WorkerState *state);
+TnStatus WorkerInit(Worker* worker, WorkerID id);
+TnStatus WorkerRun(Worker* worker, WorkerCallbackT callback);
+TnStatus WorkerAssignTask(Worker* worker, WorkerTask task);
+TnStatus WorkerDestroy(Worker* worker);
+TnStatus WorkerStop(Worker* worker);
+TnStatus WorkerFinish(Worker* worker);
+TnStatus WorkerGetState(const Worker* worker, WorkerState* state);
+
+#ifdef __cplusplus
+}
+#endif
+
+static void WorkerSleep(Worker* worker);
+static void WorkerWakeUp(Worker* worker);
+
+static void WorkerSleepUntil(Worker* worker, int* condition);
+static void WorkerExecute(void* workerArg);
+static void WorkerNotify(Worker* worker);
+static void* WorkerLoop(void* workerPtr);

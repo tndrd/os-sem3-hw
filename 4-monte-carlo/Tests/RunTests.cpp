@@ -1,98 +1,153 @@
-#include "Driver.h"
+#include <vector>
+
+#include "Worker.h"
 #include "gtest/gtest.h"
 
-using FooT = double (*)(double);
-const double StepSize = 0.001;
-const size_t NTiles = 10;
-const size_t NWorkers = 4;
-const size_t NPoints = 1000;
-const double Threshold = 0.001;
+#define CALL(foo) ASSERT_EQ(foo, STATUS_SUCCESS);
 
-CalculationArea GetFunctionLimits(FooT foo, double xStart, double xEnd,
-                                  double stepSize, double threshold) {
-  assert(xEnd > xStart);
-  assert(threshold > 0);
-  assert(stepSize > 0);
+const int DefaultArg = 666;
 
-  double yMax = 0;
-  double x = xStart;
-  size_t nSteps = ((xEnd - xStart) / stepSize) + 1;
+void Callback(Worker* worker, void* arg) {
+  ASSERT_NE(worker, nullptr);
+  ASSERT_NE(arg, nullptr);
+  ASSERT_EQ(*((int*)(arg)), DefaultArg);
+}
 
-  for (int i = 0; i < nSteps + 1; ++i) {
-    assert(foo(x) > -threshold);
+void DummyCallbackFoo(Worker* worker, void* arg) {}
 
-    if (foo(x) - yMax > threshold) yMax = foo(x);
+TEST(Worker, Init) {
+  Worker worker;
+  CALL(WorkerInit(&worker, 0));
 
-    x += stepSize;
+  int arg = DefaultArg;
+  WorkerCallbackT callback;
+  callback.Args = &arg;
+  callback.Function = Callback;
+
+  CALL(WorkerRun(&worker, callback));
+  CALL(WorkerStop(&worker));
+  CALL(WorkerDestroy(&worker));
+}
+
+TEST(Worker, Callback) {
+  Worker worker;
+  CALL(WorkerInit(&worker, 0));
+
+  int arg = DefaultArg;
+  WorkerCallbackT callback;
+  callback.Args = &arg;
+  callback.Function = Callback;
+
+  CALL(WorkerRun(&worker, callback));
+  sleep(1);
+  CALL(WorkerStop(&worker));
+  CALL(WorkerDestroy(&worker));
+}
+
+TnStatus Pow(const void* args, void* res) {
+  int* val = (int*)args;
+  int* result = (int*)res;
+
+  *result = *val * *val;
+
+  return STATUS_SUCCESS;
+}
+
+void TaskCompleteCallback(Worker* worker, void* args) { *(int*)args = 1; }
+
+TEST(Worker, SyncTaskChain) {
+  Worker worker;
+  CALL(WorkerInit(&worker, 0));
+
+  int arg, res, done;
+  WorkerCallbackT callback;
+  callback.Args = &done;
+  callback.Function = TaskCompleteCallback;
+
+  WorkerTask task;
+  TnStatus status;
+  task.Args = &arg;
+  task.Result = &res;
+  task.Status = &status;
+  task.Function = Pow;
+
+  CALL(WorkerRun(&worker, callback));
+
+  int nRepeats = 5;
+  for (int i = 0; i < nRepeats; ++i) {
+    while (worker.State != WORKER_FREE)
+      ;
+
+    arg = i;
+    res = 0;
+    done = 0;
+
+    CALL(WorkerAssignTask(&worker, task));
+    while (worker.State != WORKER_DONE)
+      ;
+
+    ASSERT_EQ(done, 1);
+    ASSERT_EQ(res, i * i);
+
+    CALL(WorkerFinish(&worker));
   }
 
-  CalculationArea limits;
-
-  limits.X = xStart;
-  limits.W = xEnd - xStart;
-  limits.Y = 0;
-  limits.H = yMax;
-
-  return limits;
+  CALL(WorkerStop(&worker));
+  CALL(WorkerDestroy(&worker));
 }
 
-void TestFunction(FooT function, FooT primitive, double xStart, double xEnd,
-                  double stepSize, size_t nTiles, size_t nWorkers,
-                  size_t nPoints, double threshold) {
-  CalculationArea limits =
-      GetFunctionLimits(function, xStart, xEnd, stepSize, threshold);
+#define N_REPEATS 5
 
-  Vec2D tileSize;
+const int NRepeats = N_REPEATS;
+int TestBuf[N_REPEATS];
+int DoStop = 0;
 
-  tileSize.X = limits.W / nTiles;
-  tileSize.Y = limits.H / nTiles;
+void WorkerChainTaskCallback(Worker* worker, void* args) {
+  static int i = 0;
+  WorkerTask* task = (WorkerTask*)(args);
 
-  CalculationResult result =
-      Driver(function, limits, tileSize, nPoints, nWorkers);
-  double expected = primitive(xEnd) - primitive(xStart);
+  if (worker->State == WORKER_FREE) {
+    int* arg = (int*)(task->Args);
+    *arg = i;
+    WorkerAssignTask(worker, *task);
+  }
 
-  ASSERT_LE(std::abs(result.Value - expected), threshold)
-      << "result: " << result.Value << ", expected: " << expected << std::endl;
+  if (worker->State == WORKER_DONE) {
+    int* result = (int*)(task->Result);
+    TestBuf[i] = *result;
+    WorkerFinish(worker);
+
+    ASSERT_EQ(*result, i * i);
+    i++;
+    if (i == NRepeats) DoStop = 1;
+  }
 }
 
-void DoTest(FooT function, FooT primitive, double xStart, double xEnd) {
-  return TestFunction(function, primitive, xStart, xEnd, StepSize, NTiles,
-                      NWorkers, NPoints, Threshold);
-}
+TEST(Worker, AsyncTaskChain) {
+  Worker worker;
+  CALL(WorkerInit(&worker, 0));
 
-#define FOO(name) double name(double x)
+  WorkerTask task;
+  int arg;
+  int result;
+  TnStatus status;
 
-FOO(fc) { return 1; }
+  task.Args = &arg;
+  task.Result = &result;
+  task.Status = &status;
+  task.Function = Pow;
 
-FOO(pc) { return x; }
+  WorkerCallbackT callback;
+  callback.Args = &task;
+  callback.Function = WorkerChainTaskCallback;
 
-FOO(fx) { return x; }
+  CALL(WorkerRun(&worker, callback));
+  while (!DoStop)
+    ;
+  CALL(WorkerStop(&worker));
+  CALL(WorkerDestroy(&worker));
 
-FOO(px) { return (x * x) / 2; }
-
-FOO(fsin) { return sin(x); }
-
-FOO(psin) { return -cos(x); }
-
-FOO(fexp) { return exp(x); }
-
-FOO(pexp) { return exp(x); }
-
-FOO(f1divx) { return 1 / x; }
-
-FOO(plog) { return log(x); }
-
-TEST(Functions, Fx) { DoTest(fx, px, 0, 1); }
-
-TEST(Functions, Fc) { DoTest(fc, pc, -100, 100); }
-
-TEST(Functions, Fsin) { DoTest(fsin, psin, 0, 3.14); }
-
-TEST(Functions, Fexp) { DoTest(fexp, pexp, -10, 1); }
-
-TEST(Functions, Fxdiv1) { DoTest(f1divx, plog, 1, 10); }
-
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  for (int i = 0; i < NRepeats; ++i) {
+    ASSERT_EQ(TestBuf[i], i * i);
+  }
 }

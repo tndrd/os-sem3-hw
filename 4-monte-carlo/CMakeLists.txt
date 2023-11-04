@@ -3,20 +3,26 @@ project(4-monte-carlo C CXX)
 
 include_directories(Inc/)
 
-add_library(TnStatus Src/TnStatus.c)
-add_library(MCAlgorithm Src/MCAlgorithm.c)
-
-add_library(WorkerContent Src/WorkerContent.c)
-target_link_libraries(WorkerContent PUBLIC TnStatus)
-
 add_library(Worker Src/Worker.c)
-target_link_libraries(Worker PUBLIC WorkerContent pthread)
+target_link_libraries(Worker PUBLIC pthread)
 
-add_library(Driver Src/Driver.c)
-target_link_libraries(Driver PUBLIC Worker MCAlgorithm)
+add_library(WorkerArray Src/WorkerArray.c)
+target_link_libraries(WorkerArray PUBLIC Worker)
 
-add_executable(${PROJECT_NAME} Src/Main.c)
-target_link_libraries(${PROJECT_NAME} PRIVATE Driver)
+add_library(WorkerQueue Src/WorkerQueue.c)
+target_link_libraries(WorkerQueue PUBLIC Worker)
 
-add_executable(Test Tests/Test.cpp)
-target_link_libraries(Test PRIVATE Driver GTest::gtest_main)
+add_library(WQMonitor Src/WQMonitor.c)
+target_link_libraries(WQMonitor PUBLIC WorkerQueue pthread)
+
+add_library(TaskQueue Src/TaskQueue.c)
+target_link_libraries(TaskQueue PUBLIC Worker)
+
+add_library(TQMonitor Src/TQMonitor.c)
+target_link_libraries(TQMonitor PUBLIC TaskQueue pthread)
+
+add_library(ThreadPool Src/ThreadPool.c)
+target_link_libraries(ThreadPool PUBLIC TQMonitor WQMonitor WorkerArray)
+
+add_executable(4-RunTests Tests/RunTests.cpp)
+target_link_libraries(4-RunTests PRIVATE Worker GTest::gtest_main)
