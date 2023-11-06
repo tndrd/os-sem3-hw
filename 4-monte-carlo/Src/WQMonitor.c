@@ -1,6 +1,7 @@
 #include "WQMonitor.h"
 
 TnStatus WQMonitorInit(WQMonitor* wqm, size_t capacity) {
+  assert(wqm);
   TnStatus status;
   int res;
 
@@ -28,6 +29,8 @@ TnStatus WQMonitorInit(WQMonitor* wqm, size_t capacity) {
 
     return STATUS_ERRNO_ERROR;
   }
+
+  wqm->HasError = 0;
 
   return STATUS_SUCCESS;
 }
@@ -90,10 +93,27 @@ TnStatus WQMonitorGetWorker(WQMonitor* wqm, WorkerID* id) {
 
 TnStatus WQMonitorWaitFull(WQMonitor* wqm) {
   assert(wqm);
+  TnStatus status;
 
   WQMonitorLock(wqm);
-  while (wqm->Workers.Size != wqm->Workers.Capacity)
+  while (!wqm->HasError && wqm->Workers.Size != wqm->Workers.Capacity)
     pthread_cond_wait(&wqm->CondFull, &wqm->Mutex);
+
+  if (wqm->HasError)
+    status = STATUS_ERROR_SIGNAL;
+  else
+    status = STATUS_SUCCESS;
+  WQMonitorUnlock(wqm);
+
+  return status;
+}
+
+TnStatus WQMonitorSignalError(WQMonitor* wqm) {
+  assert(wqm);
+
+  WQMonitorLock(wqm);
+  wqm->HasError = 1;
+  pthread_cond_signal(&wqm->CondFull);
   WQMonitorUnlock(wqm);
 
   return STATUS_SUCCESS;

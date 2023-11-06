@@ -8,6 +8,8 @@ typedef struct {
 
   pthread_mutex_t Mutex;
   pthread_cond_t CondFull;
+
+  int HasError;
 } WQMonitor;
 
 TnStatus WQMonitorInit(WQMonitor* wqm, size_t capacity);
@@ -19,3 +21,4 @@ static void WQMonitorUnlock(WQMonitor* wqm);
 TnStatus WQMonitorAddWorker(WQMonitor* wqm, const WorkerID* id);
 TnStatus WQMonitorGetWorker(WQMonitor* wqm, WorkerID* id);
 TnStatus WQMonitorWaitFull(WQMonitor* wqm);
+TnStatus WQMonitorSignalError(WQMonitor* wq);

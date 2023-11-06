@@ -1,6 +1,7 @@
 #include "TQMonitor.h"
 
 TnStatus TQMonitorInit(TQMonitor* tqm) {
+  assert(tqm);
   TnStatus status;
   int res;
 
@@ -28,6 +29,8 @@ TnStatus TQMonitorInit(TQMonitor* tqm) {
 
     return STATUS_ERRNO_ERROR;
   }
+
+  tqm->HasError = 0;
 
   return STATUS_SUCCESS;
 }
@@ -79,10 +82,9 @@ TnStatus TQMonitorGetTask(TQMonitor* tqm, WorkerTask* task) {
 
   TQMonitorLock(tqm);
   status = TaskQueuePop(&tqm->Tasks, task);
-  
-  if (tqm->Tasks.Size == 0)
-    pthread_cond_signal(&tqm->CondEmpty);
-  
+
+  if (tqm->Tasks.Size == 0) pthread_cond_signal(&tqm->CondEmpty);
+
   TQMonitorUnlock(tqm);
 
   return status;
@@ -90,11 +92,29 @@ TnStatus TQMonitorGetTask(TQMonitor* tqm, WorkerTask* task) {
 
 TnStatus TQMonitorWaitEmpty(TQMonitor* tqm) {
   assert(tqm);
+  TnStatus status;
 
   TQMonitorLock(tqm);
-  while (tqm->Tasks.Size != 0)
+  while (!tqm->HasError && tqm->Tasks.Size != 0)
     pthread_cond_wait(&tqm->CondEmpty, &tqm->Mutex);
+
+  if (tqm->HasError)
+    status = STATUS_ERROR_SIGNAL;
+  else
+    status = STATUS_SUCCESS;
+
   TQMonitorUnlock(tqm);
+
+  return status;
+}
+
+TnStatus TQMonitorSignalError(TQMonitor* tqm) {
+  assert(tqm);
+
+  TQMonitorLock(tqm);
+  tqm->HasError = 1;
+  pthread_cond_signal(&tqm->CondEmpty);
+  TQMonitorUnLock(tqm);
 
   return STATUS_SUCCESS;
 }

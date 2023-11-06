@@ -8,6 +8,8 @@ typedef struct {
 
   pthread_mutex_t Mutex;
   pthread_cond_t CondEmpty;
+
+  int HasError;
 } TQMonitor;
 
 TnStatus TQMonitorInit(TQMonitor* tqm);
@@ -19,3 +21,4 @@ static void TQMonitorUnlock(TQMonitor* tqm);
 TnStatus TQMonitorAddTask(TQMonitor* tqm, const WorkerTask* task);
 TnStatus TQMonitorGetTask(TQMonitor* tqm, WorkerTask* task);
 TnStatus TQMonitorWaitEmpty(TQMonitor* tqm);
+TnStatus TQMonitorSignalError(TQMonitor* tqm);
