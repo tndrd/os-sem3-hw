@@ -104,8 +104,7 @@ TnStatus WorkerGetState(const Worker* worker, WorkerState* state) {
 static void WorkerSleepUntil(Worker* worker, int* condition) {
   assert(worker);
   assert(condition);
-  while (worker->Active && !*condition)
-    WorkerSleep(worker);
+  while (worker->Active && !*condition) WorkerSleep(worker);
 }
 
 /* Thread */
