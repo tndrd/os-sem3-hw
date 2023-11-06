@@ -114,7 +114,7 @@ TnStatus TQMonitorSignalError(TQMonitor* tqm) {
   TQMonitorLock(tqm);
   tqm->HasError = 1;
   pthread_cond_signal(&tqm->CondEmpty);
-  TQMonitorUnLock(tqm);
+  TQMonitorUnlock(tqm);
 
   return STATUS_SUCCESS;
 }

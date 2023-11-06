@@ -82,7 +82,7 @@ TnStatus ThreadPoolDestroy(ThreadPool* tp) {
   return STATUS_SUCCESS;
 }
 
-TnStatus WorkerPoolAddTask(ThreadPool* tp, WorkerTask task) {
+TnStatus ThreadPoolAddTask(ThreadPool* tp, WorkerTask task) {
   assert(tp);
   TnStatus status;
   WorkerID workerID;
@@ -106,7 +106,7 @@ TnStatus WorkerPoolAddTask(ThreadPool* tp, WorkerTask task) {
   return status;
 }
 
-TnStatus WorkerPoolWaitAll(ThreadPool* tp) {
+TnStatus ThreadPoolWaitAll(ThreadPool* tp) {
   TnStatus status;
   assert(tp);
 
