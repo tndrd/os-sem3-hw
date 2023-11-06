@@ -7,11 +7,13 @@ static void TaskQueueDump(const TaskQueue* tq) {
       "TaskQueue: \n"
       "  Size: %lu\n"
       "  C-ty: %lu\n"
+      "  Head: %lu\n"
+      "  Tail: %lu\n"
       "  Data: { ",
-      tq->Size, tq->Capacity);
+      tq->Size, tq->Capacity, tq->Head, tq->Tail);
 
   for (int i = 0; i < tq->Capacity; ++i)
-    fprintf(stderr, "%p ", tq->Tasks[i/*(tq->Tail + i) % tq->Capacity*/].Args);
+    fprintf(stderr, "%p ", tq->Tasks[(tq->Tail + i) % tq->Capacity].Args);
 
   fprintf(stderr, "}\n");
 }
@@ -34,6 +36,8 @@ TnStatus TaskQueueInit(TaskQueue* tq) {
 TnStatus TaskQueueDestroy(TaskQueue* tq) {
   assert(tq);
   free(tq->Tasks);
+
+  return STATUS_SUCCESS;
 }
 
 TnStatus TaskQueuePush(TaskQueue* tq, const WorkerTask* task) {
@@ -88,7 +92,7 @@ static TnStatus TaskQueueResize(TaskQueue* tq) {
   size_t nLeft = center;
 
   memcpy(newTasks, tq->Tasks + center, nRight * sizeof(WorkerTask));
-  memcpy(newTasks + nRight, tq->Tasks, nLeft);
+  memcpy(newTasks + nRight, tq->Tasks, nLeft * sizeof(WorkerTask));
   free(tq->Tasks);
 
   tq->Capacity = newCapacity;
