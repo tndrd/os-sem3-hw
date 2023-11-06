@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(4-monte-carlo C CXX)
+project(ThreadPool C CXX)
 
 include_directories(Inc/)
 
@@ -24,5 +24,7 @@ target_link_libraries(TQMonitor PUBLIC TaskQueue pthread)
 add_library(ThreadPool Src/ThreadPool.c)
 target_link_libraries(ThreadPool PUBLIC TQMonitor WQMonitor WorkerArray)
 
-add_executable(4-RunTests Tests/RunTests.cpp)
-target_link_libraries(4-RunTests PRIVATE ThreadPool GTest::gtest_main)
+set(TEST_EXECUTABLE ${PROJECT_NAME}_RunTests)
+
+add_executable(${TEST_EXECUTABLE} Tests/RunTests.cpp)
+target_link_libraries(${TEST_EXECUTABLE} PRIVATE ThreadPool GTest::gtest_main)
