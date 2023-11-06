@@ -1,5 +1,21 @@
 #include "TaskQueue.h"
 
+/* Helper */
+static void TaskQueueDump(const TaskQueue* tq) {
+  assert(tq);
+  fprintf(stderr,
+      "TaskQueue: \n"
+      "  Size: %lu\n"
+      "  C-ty: %lu\n"
+      "  Data: { ",
+      tq->Size, tq->Capacity);
+
+  for (int i = 0; i < tq->Capacity; ++i)
+    fprintf(stderr, "%p ", tq->Tasks[i/*(tq->Tail + i) % tq->Capacity*/].Args);
+
+  fprintf(stderr, "}\n");
+}
+
 TnStatus TaskQueueInit(TaskQueue* tq) {
   assert(tq);
 
@@ -49,7 +65,8 @@ TnStatus TaskQueuePop(TaskQueue* tq, WorkerTask* task) {
   if (tq->Size == 0) return STATUS_UNDERFLOW;
 
   tq->Size--;
-  tq->Tail = (tq->Head + 1) % tq->Capacity;
+  *task = tq->Tasks[tq->Tail];
+  tq->Tail = (tq->Tail + 1) % tq->Capacity;
 
   return STATUS_SUCCESS;
 }
@@ -61,12 +78,18 @@ static TnStatus TaskQueueResize(TaskQueue* tq) {
   assert(tq->Head == tq->Tail);
 
   size_t newCapacity = tq->Capacity * 2;
-  WorkerTask* newTasks = (WorkerTask*)malloc(newCapacity * sizeof(WorkerTask));
+  WorkerTask* newTasks = (WorkerTask*)calloc(newCapacity, sizeof(WorkerTask));
 
   assert(newTasks);
 
-  memcpy(newTasks, tq->Tasks + tq->Tail, tq->Capacity - tq->Tail);
-  memcpy(newTasks + tq->Tail, tq->Tasks, tq->Head);
+  size_t center = tq->Head; // == tq->Tail;
+  
+  size_t nRight = tq->Capacity - center;
+  size_t nLeft = center;
+
+  memcpy(newTasks, tq->Tasks + center, nRight * sizeof(WorkerTask));
+  memcpy(newTasks + nRight, tq->Tasks, nLeft);
+  free(tq->Tasks);
 
   tq->Capacity = newCapacity;
   tq->Tasks = newTasks;
