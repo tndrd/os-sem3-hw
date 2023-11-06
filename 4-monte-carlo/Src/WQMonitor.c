@@ -74,7 +74,7 @@ TnStatus WQMonitorAddWorker(WQMonitor* wqm, const WorkerID* id) {
   if (wqm->Workers.Size == wqm->Workers.Capacity)
     pthread_cond_signal(&wqm->CondFull);
 
-  WQMonitorLock(wqm);
+  WQMonitorUnlock(wqm);
 
   return status;
 }
