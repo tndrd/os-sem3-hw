@@ -23,6 +23,7 @@ target_link_libraries(TQMonitor PUBLIC TaskQueue pthread)
 
 add_library(ThreadPool Src/ThreadPool.c)
 target_link_libraries(ThreadPool PUBLIC TQMonitor WQMonitor WorkerArray)
+target_include_directories(ThreadPool PUBLIC Inc/)
 
 set(TEST_EXECUTABLE ${PROJECT_NAME}_RunTests)
 
