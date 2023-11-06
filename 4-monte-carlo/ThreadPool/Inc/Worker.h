@@ -9,7 +9,7 @@
 struct WorkerImpl;
 typedef size_t WorkerID;
 
-typedef TnStatus (*WorkerFooT)(const void* args, void* result);
+typedef void (*WorkerFooT)(void* args, void* result);
 typedef void (*WorkerCallbackFooT)(struct WorkerImpl* worker, void* args);
 
 typedef struct {
@@ -21,7 +21,6 @@ typedef struct {
   WorkerFooT Function;
   void* Args;
   void* Result;
-  TnStatus* Status;
 } WorkerTask;
 
 typedef enum {

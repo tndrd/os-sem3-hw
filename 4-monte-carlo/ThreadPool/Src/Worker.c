@@ -58,7 +58,6 @@ TnStatus WorkerAssignTask(Worker* worker, WorkerTask task) {
   assert(task.Args);
   assert(task.Function);
   assert(task.Result);
-  assert(task.Status);
 
   pthread_mutex_lock(&worker->Mutex);
   assert(worker->State == WORKER_FREE);
@@ -113,18 +112,16 @@ static void WorkerExecute(void* workerArg) {
 
   assert(worker);
 
-  const void* args = worker->Task.Args;
+  void* args = worker->Task.Args;
   void* result = worker->Task.Result;
-  TnStatus* status = worker->Task.Status;
   WorkerFooT function = worker->Task.Function;
 
   assert(result);
-  assert(status);
   assert(function);
   assert(args);
 
   pthread_mutex_unlock(&worker->Mutex);
-  *status = function(args, result);
+  function(args, result);
   pthread_mutex_lock(&worker->Mutex);
 }
 

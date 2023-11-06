@@ -25,10 +25,8 @@ TEST(Worker, Init) {
   Worker worker;
   CALL(WorkerInit(&worker, 0));
 
-  int arg = DefaultArg;
   WorkerCallbackT callback;
-  callback.Args = &arg;
-  callback.Function = Callback;
+  callback.Function = DummyCallbackFoo;
 
   CALL(WorkerRun(&worker, callback));
   CALL(WorkerStop(&worker));
@@ -50,13 +48,11 @@ TEST(Worker, Callback) {
   CALL(WorkerDestroy(&worker));
 }
 
-TnStatus Pow(const void* args, void* res) {
+void Pow(void* args, void* res) {
   int* val = (int*)args;
   int* result = (int*)res;
 
   *result = *val * *val;
-
-  return STATUS_SUCCESS;
 }
 
 void TaskCompleteCallback(Worker* worker, void* args) { *(int*)args = 1; }
@@ -71,10 +67,8 @@ TEST(Worker, SyncTaskChain) {
   callback.Function = TaskCompleteCallback;
 
   WorkerTask task;
-  TnStatus status;
   task.Args = &arg;
   task.Result = &res;
-  task.Status = &status;
   task.Function = Pow;
 
   CALL(WorkerRun(&worker, callback));
@@ -136,11 +130,9 @@ TEST(Worker, AsyncTaskChain) {
   WorkerTask task;
   int arg;
   int result;
-  TnStatus status;
 
   task.Args = &arg;
   task.Result = &result;
-  task.Status = &status;
   task.Function = Pow;
 
   WorkerCallbackT callback;
@@ -373,7 +365,6 @@ TEST(ThreadPool, Init) {
 struct TaskData {
   int Arg;
   int Res;
-  TnStatus Status; 
 };
 
 template<size_t NWorkers, size_t NTasks>
@@ -384,11 +375,9 @@ void TestThreadPool() {
   for (int i = 0; i < NTasks; ++i) {
     TasksImpl[i].Arg = i;
     TasksImpl[i].Res = -1;
-    TasksImpl[i].Status = STATUS_UNDEFINED;
 
     Tasks[i].Args = &TasksImpl[i].Arg;
     Tasks[i].Result = &TasksImpl[i].Res;
-    Tasks[i].Status = &TasksImpl[i].Status;
     Tasks[i].Function = Pow;
   }
 
@@ -403,7 +392,6 @@ void TestThreadPool() {
   CALL(ThreadPoolWaitAll(&tp));
 
   for (int i = 0; i < NTasks; ++i) {
-    ASSERT_EQ(TasksImpl[i].Status, STATUS_SUCCESS);
     ASSERT_EQ(TasksImpl[i].Res, i * i);
   }
 
