@@ -1,5 +1,23 @@
 #include "WorkerQueue.h"
 
+/* Helper */
+static void WorkerQueueDump(const WorkerQueue* wq) {
+  assert(wq);
+  fprintf(stderr,
+      "WorkerQueue: \n"
+      "  Size: %lu\n"
+      "  C-ty: %lu\n"
+      "  Head: %lu\n"
+      "  Tail: %lu\n"
+      "  Data: { ",
+      wq->Size, wq->Capacity, wq->Head, wq->Tail);
+
+  for (int i = 0; i < wq->Capacity; ++i)
+    fprintf(stderr, "%lu ", wq->Buffer[(wq->Tail + i) % wq->Capacity]);
+
+  fprintf(stderr, "}\n");
+}
+
 TnStatus WorkerQueueInit(WorkerQueue* wq, size_t capacity) {
   assert(wq);
   assert(capacity > 0);
@@ -45,7 +63,7 @@ TnStatus WorkerQueuePop(WorkerQueue* wq, WorkerID* id) {
     return STATUS_UNDERFLOW;
 
   wq->Size--;
-  *id = wq->Tail;
+  *id = wq->Buffer[wq->Tail];
   wq->Tail = (wq->Tail + 1) % wq->Capacity;
 
   return STATUS_SUCCESS;
