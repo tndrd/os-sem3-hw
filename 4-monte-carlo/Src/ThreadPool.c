@@ -22,7 +22,8 @@ static void WorkerCallback(Worker* worker, void* args) {
       // No availble tasks, wait for new ones
       status = WQMonitorAddWorker(&tp->FreeWorkers, &worker->ID);
       assert(status == STATUS_SUCCESS);
-    }
+    } else
+      assert(0);
   } else if (state == WORKER_DONE) {
     // Worker has finished, so we can let it continue
     status = WorkerFinish(worker);
@@ -45,6 +46,7 @@ TnStatus ThreadPoolInit(ThreadPool* tp, size_t nWorkers) {
   status = WQMonitorInit(&tp->FreeWorkers, nWorkers);
   if (status != STATUS_SUCCESS) {
     assert(TQMonitorDestroy(&tp->Tasks) == STATUS_SUCCESS);
+    return status;
   }
 
   status = WorkerArrayInit(&tp->Workers, nWorkers);
@@ -93,7 +95,6 @@ TnStatus ThreadPoolAddTask(ThreadPool* tp, WorkerTask task) {
   if (status == STATUS_SUCCESS) {  // Has free worker, assign task
     status = WorkerArrayGet(&tp->Workers, workerID, &worker);
     assert(status == STATUS_SUCCESS);
-
     status = WorkerAssignTask(worker, task);
 
     if (status != STATUS_SUCCESS)  // Failed to assign
