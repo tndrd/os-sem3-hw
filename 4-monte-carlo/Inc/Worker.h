@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
   WorkerFooT Function;
-  const void* Args;
+  void* Args;
   void* Result;
   TnStatus* Status;
 } WorkerTask;

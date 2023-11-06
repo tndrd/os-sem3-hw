@@ -14,8 +14,16 @@ typedef struct {
 
 } WorkerQueue;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 TnStatus WorkerQueueInit(WorkerQueue* wq, size_t capacity);
 TnStatus WorkerQueueDestroy(WorkerQueue* wq);
 TnStatus WorkerQueuePush(WorkerQueue* wq, const WorkerID* id);
 TnStatus WorkerQueuePop(WorkerQueue* wq, WorkerID* id);
 TnStatus WorkerQueueSize(const WorkerQueue* wq, size_t* size);
+
+#ifdef __cplusplus
+}
+#endif
