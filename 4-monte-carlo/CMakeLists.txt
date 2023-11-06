@@ -25,4 +25,4 @@ add_library(ThreadPool Src/ThreadPool.c)
 target_link_libraries(ThreadPool PUBLIC TQMonitor WQMonitor WorkerArray)
 
 add_executable(4-RunTests Tests/RunTests.cpp)
-target_link_libraries(4-RunTests PRIVATE Worker GTest::gtest_main)
+target_link_libraries(4-RunTests PRIVATE ThreadPool GTest::gtest_main)
