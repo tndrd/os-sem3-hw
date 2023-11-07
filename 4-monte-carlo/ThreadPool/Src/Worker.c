@@ -143,6 +143,18 @@ static void* WorkerLoop(void* workerPtr) {
   assert(workerPtr);
   Worker* worker = (Worker*)workerPtr;
 
+  cpu_set_t cpuset; 
+
+  int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+
+  int cpu = worker->ID % num_cores;
+
+  CPU_ZERO(&cpuset);       //clears the cpuset
+  CPU_SET( cpu , &cpuset); //set CPU 2 on cpuset
+
+  sched_setaffinity(0, sizeof(cpuset), &cpuset);
+
+
   while (worker->Active) {
     WorkerNotify(worker);
 

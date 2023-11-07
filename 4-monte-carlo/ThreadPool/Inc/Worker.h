@@ -1,10 +1,17 @@
 #pragma once
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <pthread.h>
 
 #include "Status.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sched.h>
+#include <unistd.h>
 
 struct WorkerImpl;
 typedef size_t WorkerID;
