@@ -1,7 +1,7 @@
 msgMax=$( cat /proc/sys/kernel/msgmax )
 
 srcFile=1gb.in
-nRepeats=1
+nRepeats=5
 
 bufSizesFifo="16 128 4096 65536 1048576 16777216"
 bufSizesShm="16 128 4096 65536 1048576 16777216"
