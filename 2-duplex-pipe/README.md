@@ -18,11 +18,11 @@ The output data should be equal to input data. The result can be verified via ch
 md5sum data.in && md5sum data.out
 ```
 
+# How to test
 There are several automated tests which you can run:
 > Warning: ```GetTestData.sh``` generates several files with one of them being **4Gb** of size.
 
 ```bash
-cd build/2-duplex-pipe
-sh GenTestData.sh # ~20s
-sh RunTests.sh    # ~20s
+sh GenTestData.sh
+sh RunTests.sh
 ```

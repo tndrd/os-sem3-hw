@@ -25,3 +25,37 @@ The resulting measurements are presented on the figure below:
 - The FIFO's performance has dropped after the intermediate buffer size reached 16 pages (64 Kb). Well, this behaviour has a clear reason. The default FIFO's capacity is exactly 64 Kb. Bigger amounts of data doesn't fit in it, so the transmitter starts blocking on ```write()``` calls, and the overall performance drops.
 
 - The Shared Memory data transmission implementation is only limited to the maximum amount of physical RAM it can use. It's execution time tends to zero as the buffer size grows. 
+
+# How to run 
+First the benchmark data needs to be generated:
+> Warning: GenBenchmarkData.sh generates **1Gb** file
+
+```bash
+cd build/3-ipc-comparison
+sh GenBenchmarkData.sh
+```
+
+Run the benchmarks:
+
+```bash
+sh RunBenchmarks.sh > results.txt # will take some time to finish
+```
+
+Generate plot:
+
+```bash
+python3 Plot.py results.txt
+```
+
+The resulting image will be generated as ```Result.png```
+
+# How to test
+
+There are several automated tests which you can run:
+> Warning: ```GenTestData.sh``` generates several files with one of them being **4Gb** of size.
+
+```bash
+sh GenTestData.sh
+python GenTests.py
+sh RunTests.sh
+```
