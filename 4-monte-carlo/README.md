@@ -26,3 +26,17 @@ The resulting measurements are presented on the figure below:
 - When the number of workers reaches the count of CPU cores, performance reaches its maximum.
 
 - Performance stays quite the same for number of workers bigger than CPU core count.
+
+# How to run
+```bash
+cd build/4-monte-carlo
+./RunBenchmark > result.txt
+python3 Plot.py result.txt
+```
+
+# How to test
+```bash
+cd build/4-monte-carlo
+./ThreadPool/ThreadPool_RunTests
+./4-monte-carlo_RunTests
+```
