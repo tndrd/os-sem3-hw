@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(4-monte-carlo C CXX)
 
-add_subdirectory(ThreadPool/)
 include_directories(Inc/)
 
 add_library(MonteCarlo Src/MonteCarlo.c)

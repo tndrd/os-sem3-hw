@@ -6,6 +6,15 @@ void ExitWithError(const char* msg) {
   exit(1);
 }
 
+void AssertTnStatus(const char* msg, TnStatus status) {
+  assert(msg);
+  if (TnStatusOk(status)) return;
+  fprintf(stderr, "Error: %s: ", msg);
+  TnStatusPrintDescription(status);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
 Tiler CreateTiler(Rectangle2D area, size_t xCount, size_t yCount) {
   if (xCount == 0 || yCount == 0)
     ExitWithError("Wrong tiler parameters");
@@ -57,12 +66,13 @@ double MonteCarloMT(MonteCarloArgs* args, size_t nWorkers, size_t tilesX,
   assert(args->Function);
 
   ThreadPool tp;
+  TnStatus status;
 
-  if (ThreadPoolInit(&tp, nWorkers) != STATUS_SUCCESS)
-    ExitWithError("Failed to create thread pool\n");
+  status = ThreadPoolInit(&tp, nWorkers);
+  AssertTnStatus("Failed to init threadpool", status);
 
-  if (ThreadPoolRun(&tp) != STATUS_SUCCESS)
-    ExitWithError("Failed to run thread pool\n");
+  status = ThreadPoolRun(&tp);
+  AssertTnStatus("Failed to run threadpool", status);
 
   Tiler tiler = CreateTiler(args->Limits, tilesX, tilesY);
 
@@ -88,15 +98,15 @@ double MonteCarloMT(MonteCarloArgs* args, size_t nWorkers, size_t tilesX,
     tasks[i].Result = &tasksImpl[i].Result;
     tasks[i].Function = MonteCarloAdapter;
 
-    if(ThreadPoolAddTask(&tp, tasks[i]) != STATUS_SUCCESS)
-      ExitWithError("Failed to assign task\n");
+    status = ThreadPoolAddTask(&tp, tasks[i]);
+    AssertTnStatus("Failed to add task", status);
   }
 
   if (TilerGetNext(&tiler, &tile))
       ExitWithError("Tiler is weird again\n");
 
-  if(ThreadPoolWaitAll(&tp) != STATUS_SUCCESS)
-    ExitWithError("Failed to wait\n");
+  status = ThreadPoolWaitAll(&tp);
+  AssertTnStatus("Failed to wait", status);
 
   double result = 0;
   for (int i = 0; i < tiler.NTiles; ++i) {

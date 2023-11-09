@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MonteCarlo.h"
-#include "ThreadPool.h"
+#include "ThreadPool/ThreadPool.h"
 #include "math.h"
 
 typedef struct {
@@ -22,6 +22,7 @@ typedef struct {
 
 
 void ExitWithError(const char* msg);
+void AssertTnStatus(const char* msg, TnStatus status);
 Tiler CreateTiler(Rectangle2D area, size_t xCount, size_t yCount);
 int TilerGetNext(Tiler* tiler, Rectangle2D* tile);
 
