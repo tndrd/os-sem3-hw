@@ -35,10 +35,41 @@ TnStatus QueueDestroy(Queue* self) {
   return TN_OK;
 }
 
+TnStatus QueueResize(Queue* self) {
+  assert(self);
+  assert(self->Size == self->Capacity);
+  assert(self->Size);
+  assert(self->Head == self->Tail);
+
+  size_t newCapacity = self->Capacity * 2;
+  int* newBuf = (int*)calloc(newCapacity, sizeof(int));
+
+  if (!newBuf) return TNSTATUS(TN_BAD_ALLOC);
+
+  size_t center = self->Head;  // == self->Tail;
+
+  size_t nRight = self->Capacity - center;
+  size_t nLeft = center;
+
+  memcpy(newBuf, self->Buffer + center, nRight * sizeof(int));
+  memcpy(newBuf + nRight, self->Buffer, nLeft * sizeof(int));
+  free(self->Buffer);
+
+  self->Capacity = newCapacity;
+  self->Buffer = newBuf;
+  self->Tail = 0;
+  self->Head = self->Size;
+
+  return TN_OK;
+}
+
 TnStatus QueuePush(Queue* self, const int* val) {
   if (!self || !val) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  if (self->Size == self->Capacity) return TNSTATUS(TN_OVERFLOW);
+  if (self->Size == self->Capacity) {
+    TnStatus status = QueueResize(self);
+    if (!TnStatusOk(status)) return status;
+  }
 
   self->Buffer[self->Head] = *val;
   self->Head = (self->Head + 1) % self->Capacity;

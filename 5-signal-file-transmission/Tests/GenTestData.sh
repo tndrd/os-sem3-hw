@@ -1,0 +1,1 @@
+time dd if=/dev/urandom of=10mb.in bs=1048576 count=10

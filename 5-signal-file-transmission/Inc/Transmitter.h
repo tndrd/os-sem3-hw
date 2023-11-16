@@ -84,7 +84,8 @@ void TransmitterSendCmd(Transmitter* self, int cmd) {
 
   sigval_t sigVal;
   sigVal.sival_int = cmd;
-  sigqueue(self->RxPid, CMD_SIGNUM, sigVal);
+  TnStatus status = SendSignal(self->RxPid, CMD_SIGNUM, sigVal);
+  AssertTnStatus(status);
 }
 
 TnStatus TransmitterControlCallback(Transmitter* self, int val) {
@@ -128,29 +129,47 @@ void TransmitterWaitReceiverConnection(Transmitter* self) {
 
 void TransmitterWaitReceiverFinish(Transmitter* self) {
   TransmitterSendCmd(self, CMD_STOP);
-
+  fprintf(stderr, "Waiting for receiver to finish...\n");
   TransmitterLock(self);
   while (!self->RxFinished) TransmitterSleep(self);
   TransmitterUnlock(self);
 }
 
-void TransmitterSendData(Transmitter* self, int val) {
+void TransmitterSendInt(Transmitter* self, int val) {
+  assert(self);
+
+  // usleep(10000);
+
+  sigval_t sigVal;
+  sigVal.sival_int = val;
+
+  TnStatus status = SendSignal(self->RxPid, DATA_INT_SIGNUM, sigVal);
+  AssertTnStatus(status);
+}
+
+void TransmitterSendChar(Transmitter* self, char val) {
   assert(self);
 
   sigval_t sigVal;
   sigVal.sival_int = val;
-  sigqueue(self->RxPid, DATA_SIGNUM, sigVal);
+
+  TnStatus status = SendSignal(self->RxPid, DATA_CHAR_SIGNUM, sigVal);
+  AssertTnStatus(status);
 }
 
-TnStatus ReadFromFd(int fd, int* val, int* hasEof) {
-  if (!val || !hasEof) return TNSTATUS(TN_BAD_ARG_PTR);
+TnStatus ReadFromFdToInt(int fd, int* val, int* hasEof, int* remains) {
+  if (!val || !hasEof || !remains) return TNSTATUS(TN_BAD_ARG_PTR);
   char* buf = (char*)val;
   size_t size = sizeof(int);
   size_t total = 0;
 
   while (total < size) {
     int ret = read(fd, buf + total, size - total);
-    if (!ret) break;
+    if (!ret) {
+      *remains = total;
+      *hasEof = 1;
+      break;
+    }
     if (ret < 0) return TNSTATUS(TN_ERRNO);
     total += ret;
   }
@@ -165,14 +184,20 @@ void* TransmitterMainLoop(void* selfPtr) {
 
   TransmitterWaitReceiverConnection(self);
 
-  int val, hasEof = 0;
+  int val, remains, hasEof = 0;
 
-  while(!hasEof) {
+  while (1) {
     val = 0;
-    status = ReadFromFd(self->Fd, &val, &hasEof);
-    if(!TnStatusOk(status)) break;
-    
-    TransmitterSendData(self, val);
+    status = ReadFromFdToInt(self->Fd, &val, &hasEof, &remains);
+    if (!TnStatusOk(status)) break;
+    if (hasEof) break;
+
+    TransmitterSendInt(self, val);
+  }
+
+  for (int i = 0; i < remains; ++i) {
+    char ch = ((char*)&val)[i];
+    TransmitterSendChar(self, ch);
   }
 
   TransmitterWaitReceiverFinish(self);
@@ -186,7 +211,7 @@ TnStatus TransmitterStart(Transmitter* self) {
 
   int ret = pthread_create(&self->Thread, NULL, TransmitterMainLoop, self);
 
-  if (!ret) {
+  if (ret != 0) {
     errno = ret;
     return TNSTATUS(TN_ERRNO);
   }

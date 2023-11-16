@@ -1,21 +1,30 @@
 #pragma once
+#include <assert.h>
 #include <errno.h>
-#include <unistd.h>
+#include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "Common.h"
-#include "QMonitor.h"
+#include "Queue.h"
 
 typedef struct {
-  QMonitor QMonitor;
+  Queue Queue;
+
   pthread_t Thread;
+  pthread_mutex_t Mutex;
+  pthread_cond_t Cond;
 
   TnStatus Status;
   int Errno;
 
   int DoStop;
+  int DoStart;
   int Fd;
   pid_t TxPid;
+
+  char Remainder[sizeof(int)];
+  size_t Remains;
 } Receiver;
 
 void* ReceiverMainLoop(void* selfPtr);
@@ -23,30 +32,66 @@ void* ReceiverMainLoop(void* selfPtr);
 TnStatus ReceiverInit(Receiver* self, int fd, size_t queueCapacity) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
+  TnStatus status = QueueInit(&self->Queue, queueCapacity);
+  if (!TnStatusOk(status)) return status;
+
+  int ret = pthread_create(&self->Thread, NULL, ReceiverMainLoop, self);
+  if (ret != 0) {
+    errno = ret;
+    QueueDestroy(&self->Queue);
+    return TNSTATUS(TN_ERRNO);
+  }
+
   self->Fd = fd;
   self->DoStop = 0;
+  self->DoStart = 0;
   self->Status = TN_OK;
   self->Errno = 0;
+  self->Remains = 0;
 
-  return QMonitorInit(&self->QMonitor, queueCapacity);
+  pthread_mutex_init(&self->Mutex, NULL);
+  pthread_cond_init(&self->Cond, NULL);
+
+  return TN_OK;
 }
 
 TnStatus ReceiverDestroy(Receiver* self) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  return QMonitorDestroy(&self->QMonitor);
+  pthread_mutex_destroy(&self->Mutex);
+  pthread_cond_destroy(&self->Cond);
+
+  return QueueDestroy(&self->Queue);
+}
+
+void ReceiverLock(Receiver* self) {
+  assert(self);
+  pthread_mutex_lock(&self->Mutex);
+}
+
+void ReceiverUnlock(Receiver* self) {
+  assert(self);
+  pthread_mutex_unlock(&self->Mutex);
+}
+
+void ReceiverSleep(Receiver* self) {
+  assert(self);
+  pthread_cond_wait(&self->Cond, &self->Mutex);
+}
+
+void ReceiverSignal(Receiver* self) {
+  assert(self);
+  pthread_cond_signal(&self->Cond);
 }
 
 TnStatus ReceiverStart(Receiver* self, pid_t txPid) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  int ret = pthread_create(&self->Thread, NULL, ReceiverMainLoop, self);
-  if (ret != 0) {
-    errno = ret;
-    return TNSTATUS(TN_ERRNO);
-  }
-
+  ReceiverLock(self);
   self->TxPid = txPid;
+  self->DoStart = 1;
+  ReceiverSignal(self);
+  ReceiverUnlock(self);
 
   return TN_OK;
 }
@@ -54,13 +99,15 @@ TnStatus ReceiverStart(Receiver* self, pid_t txPid) {
 TnStatus ReceiverStop(Receiver* self) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
+  ReceiverLock(self);
   self->DoStop = 1;
-  QMonitorSignal(&self->QMonitor);
+  ReceiverSignal(self);
+  ReceiverUnlock(self);
 
   return TN_OK;
 }
 
-static TnStatus WriteToFd(int fd, int val) {
+static TnStatus WriteIntToFd(int fd, int val) {
   const char* buf = (const char*)(&val);
   size_t size = sizeof(int);
   size_t total = 0;
@@ -74,37 +121,72 @@ static TnStatus WriteToFd(int fd, int val) {
   return TN_OK;
 }
 
-void* ReceiverMainLoop(void* selfPtr) {
-  assert(selfPtr);
-  Receiver* self = (Receiver*)self;
-  sigval_t sigVal;
+TnStatus ReceiverFlushQueue(Receiver* self) {
+  assert(self);
 
-  sigVal.sival_int = CMD_CONNECT;
-  sigqueue(self->TxPid, CMD_SIGNUM, sigVal);
-
-  while (1) {
-    int empty;
-    while (1) {
-      QMonitorEmpty(&self->QMonitor, &empty);
-      if (!empty || self->DoStop) break;
-      QMonitorSleepUntilEvent(&self->QMonitor);
-    }
-
-    if (self->DoStop && empty) break;
-
-    int val;
-    while (QMonitorPop(&self->QMonitor, &val).Code != TN_UNDERFLOW) {
-      TnStatus status = WriteToFd(self->Fd, val);
-      if (!TnStatusOk(status)) {
-        self->Status = status;
-        self->Errno = errno;
-        return NULL;
-      }
+  int val;
+  while (QueuePop(&self->Queue, &val).Code != TN_UNDERFLOW) {
+    TnStatus status = WriteIntToFd(self->Fd, val);
+    if (!TnStatusOk(status)) {
+      self->Status = status;
+      self->Errno = errno;
+      return status;
     }
   }
 
+  return TN_OK;
+}
+
+TnStatus ReceiverFlushRemainder(Receiver* self) {
+  assert(self);
+  size_t total = 0;
+  size_t size = self->Remains;
+  const char* buf = self->Remainder;
+
+  while (total < size) {
+    int ret = write(self->Fd, buf + total, size - total);
+    if (ret < 0) return TNSTATUS(TN_ERRNO);
+    total += ret;
+  }
+
+  return TN_OK;
+}
+
+void* ReceiverMainLoop(void* selfPtr) {
+  assert(selfPtr);
+  Receiver* self = (Receiver*)selfPtr;
+  sigval_t sigVal;
+
+  sigset_t sigset;
+  sigfillset(&sigset);
+
+  assert(pthread_sigmask(SIG_BLOCK, &sigset, NULL) == 0);
+
+  ReceiverLock(self);
+  while (!self->DoStart) ReceiverSleep(self);
+  ReceiverUnlock(self);
+
+  sigVal.sival_int = CMD_CONNECT;
+  TnStatus status = SendSignal(self->TxPid, CMD_SIGNUM, sigVal);
+  AssertTnStatus(status);
+
+  while (1) {
+    ReceiverLock(self);
+
+    while (self->Queue.Size == 0 && !self->DoStop) ReceiverSleep(self);
+
+    ReceiverFlushQueue(self);
+
+    ReceiverUnlock(self);
+
+    if (self->DoStop) break;
+  }
+
+  ReceiverFlushRemainder(self);
+
   sigVal.sival_int = CMD_FINISH;
-  sigqueue(self->TxPid, CMD_SIGNUM, sigVal);
+  status = SendSignal(self->TxPid, CMD_SIGNUM, sigVal);
+  AssertTnStatus(status);
 
   self->Status = TN_OK;
   return NULL;
@@ -126,12 +208,30 @@ TnStatus ReceiverControlCallback(Receiver* self, int cmd, pid_t txPid) {
   }
 }
 
-TnStatus ReceiverValueCallback(Receiver* self, int val) {
+TnStatus ReceiverIntCallback(Receiver* self, int val) {
   assert(self);
-  TnStatus status = QMonitorPush(&self->QMonitor, &val);
-  assert(TnStatusOk(status));
+
+  ReceiverLock(self);
+  TnStatus status = QueuePush(&self->Queue, &val);
+  AssertTnStatus(status);
+  
+  //if (self->Queue.Size == self->Queue.Capacity)
+  ReceiverSignal(self);
+  ReceiverUnlock(self);
 
   return status;
+}
+
+TnStatus ReceiverCharCallback(Receiver* self, char val) {
+  assert(self);
+
+  ReceiverLock(self);
+  assert(self->Remains < sizeof(self->Remainder) / sizeof(self->Remainder[0]));
+
+  self->Remainder[self->Remains++] = val;
+  ReceiverUnlock(self);
+
+  return TN_OK;
 }
 
 TnStatus ReceiverSpin(Receiver* self) {
