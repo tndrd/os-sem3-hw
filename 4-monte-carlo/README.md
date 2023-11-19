@@ -6,8 +6,8 @@ For the integral sum evaluation Monte-Carlo algorithm is used.
 # Implementation
 
 The implementation consists of two separated modules:
-- The first one involves ThreadPool pattern implementation (see ```ThreadPool/``` directory)
-- The second one uses ThreadPool to calculate integral sum of given function
+- The first one involves ThreadPool pattern implementation (see [TnAsync](https://github.com/tndrd/TnAsync) repo)
+- The second one uses ThreadPool to calculate integral sum of a given function
 
 # Measurements
 
