@@ -36,7 +36,7 @@ TnStatus TransmitterSpin(Transmitter* self);
 
 static void TransmitterLock(Transmitter* self);
 static void TransmitterUnlock(Transmitter* self);
-static void TransmitterWakeUp(Transmitter* self);
+static void TransmitterSignal(Transmitter* self);
 static void TransmitterSleep(Transmitter* self);
 static void TransmitterSleepFor(Transmitter* self, size_t seconds);
 

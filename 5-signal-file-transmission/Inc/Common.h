@@ -18,3 +18,6 @@
 #define CMD_SIGNUM BASE_SIGNUM + 2
 
 TnStatus SendSignal(pid_t pid, int sigNo, sigval_t value);
+void ExitWithMessage(const char* msg);
+void ExitWithErrno(const char* msg);
+void SigactionWrapper(int sigNum, const struct sigaction* sigAction);

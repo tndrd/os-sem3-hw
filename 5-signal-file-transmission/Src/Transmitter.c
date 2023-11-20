@@ -4,9 +4,6 @@ TnStatus TransmitterInit(Transmitter* self, int fd, pid_t rxPid,
                          size_t pollPeriod) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  pthread_mutex_init(&self->Mutex, NULL);
-  pthread_cond_init(&self->Cond, NULL);
-
   self->Fd = fd;
   self->RxPid = rxPid;
   self->Connected = 0;
@@ -14,6 +11,9 @@ TnStatus TransmitterInit(Transmitter* self, int fd, pid_t rxPid,
   self->PollPeriod = pollPeriod;
   self->Status = TN_OK;
   self->Errno = 0;
+
+  pthread_mutex_init(&self->Mutex, NULL);
+  pthread_cond_init(&self->Cond, NULL);
 
   return TN_OK;
 }
@@ -37,7 +37,7 @@ static void TransmitterUnlock(Transmitter* self) {
   pthread_mutex_unlock(&self->Mutex);
 }
 
-static void TransmitterWakeUp(Transmitter* self) {
+static void TransmitterSignal(Transmitter* self) {
   assert(self);
   pthread_cond_signal(&self->Cond);
 }
@@ -66,6 +66,24 @@ static void TransmitterSendCmd(Transmitter* self, int cmd) {
   TnStatusAssert(status);
 }
 
+static void TransmitterSendInt(Transmitter* self, int val) {
+  assert(self);
+
+  sigval_t sigVal;
+  sigVal.sival_int = val;
+  TnStatus status = SendSignal(self->RxPid, DATA_INT_SIGNUM, sigVal);
+  TnStatusAssert(status);
+}
+
+static void TransmitterSendChar(Transmitter* self, char val) {
+  assert(self);
+
+  sigval_t sigVal;
+  sigVal.sival_int = val;
+  TnStatus status = SendSignal(self->RxPid, DATA_CHAR_SIGNUM, sigVal);
+  TnStatusAssert(status);
+}
+
 TnStatus TransmitterControlCallback(Transmitter* self, int val) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
@@ -74,7 +92,7 @@ TnStatus TransmitterControlCallback(Transmitter* self, int val) {
 
     TransmitterLock(self);
     self->Connected = 1;
-    TransmitterWakeUp(self);
+    TransmitterSignal(self);
     TransmitterUnlock(self);
     return TN_OK;
   }
@@ -82,7 +100,7 @@ TnStatus TransmitterControlCallback(Transmitter* self, int val) {
     if (self->RxFinished) return TNSTATUS(TN_FSM_WRONG_STATE);
     TransmitterLock(self);
     self->RxFinished = 1;
-    TransmitterWakeUp(self);
+    TransmitterSignal(self);
     TransmitterUnlock(self);
     return TN_OK;
   }
@@ -91,12 +109,13 @@ TnStatus TransmitterControlCallback(Transmitter* self, int val) {
 }
 
 static void TransmitterWaitReceiverConnection(Transmitter* self) {
-  size_t nAttempt = 0;
+  size_t nAttempt = 1;
   fprintf(stderr, "Waiting for connection...\n");
 
   TransmitterLock(self);
   while (!self->Connected) {
-    fprintf(stderr, "Attempt #%zu...\r", nAttempt++);
+    if (nAttempt > 1) fprintf(stderr, "Attempt #%zu...\r", nAttempt++);
+
     TransmitterSendCmd(self, CMD_START);
     TransmitterSleepFor(self, self->PollPeriod);
   }
@@ -111,28 +130,6 @@ static void TransmitterWaitReceiverFinish(Transmitter* self) {
   TransmitterLock(self);
   while (!self->RxFinished) TransmitterSleep(self);
   TransmitterUnlock(self);
-}
-
-static void TransmitterSendInt(Transmitter* self, int val) {
-  assert(self);
-
-  // usleep(10000);
-
-  sigval_t sigVal;
-  sigVal.sival_int = val;
-
-  TnStatus status = SendSignal(self->RxPid, DATA_INT_SIGNUM, sigVal);
-  TnStatusAssert(status);
-}
-
-static void TransmitterSendChar(Transmitter* self, char val) {
-  assert(self);
-
-  sigval_t sigVal;
-  sigVal.sival_int = val;
-
-  TnStatus status = SendSignal(self->RxPid, DATA_CHAR_SIGNUM, sigVal);
-  TnStatusAssert(status);
 }
 
 static TnStatus ReadFromFdToInt(int fd, int* val, int* hasEof, int* remains) {
@@ -179,7 +176,7 @@ static void* TransmitterMainLoop(void* selfPtr) {
     // cppcheck-suppress objectIndex
     TransmitterSendChar(self, remainder[i]);
   }
-  
+
   TransmitterWaitReceiverFinish(self);
 
   self->Status = status;

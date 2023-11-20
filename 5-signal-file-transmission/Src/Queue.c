@@ -5,7 +5,6 @@ TnStatus QueueInit(Queue* self, size_t capacity) {
   if (!capacity) return TNSTATUS(TN_BAD_ARG_VAL);
 
   int* newBuffer = (int*)malloc(capacity * sizeof(int));
-
   if (!newBuffer) return TNSTATUS(TN_BAD_ALLOC);
 
   self->Buffer = newBuffer;
@@ -32,12 +31,11 @@ static TnStatus QueueResize(Queue* self) {
   assert(self->Head == self->Tail);
 
   size_t newCapacity = self->Capacity * 2;
-  int* newBuf = (int*)calloc(newCapacity, sizeof(int));
 
+  int* newBuf = (int*)calloc(newCapacity, sizeof(int));
   if (!newBuf) return TNSTATUS(TN_BAD_ALLOC);
 
-  size_t center = self->Head;  // == self->Tail;
-
+  size_t center = self->Head;
   size_t nRight = self->Capacity - center;
   size_t nLeft = center;
 

@@ -1,41 +1,28 @@
 #include "RxDriver.h"
 
-static void RxSigHandler(int sigNum, siginfo_t* sigInfo, void* ctxPtr) {
-  // ReceiverContext* ctx = (ReceiverContext*)(ctxPtr);
-  ReceiverContext* ctx = &rxCtx;
-  TnStatus status;
-  assert(ctx);
+static void RxSigHandler(int sigNum, siginfo_t* sigInfo, void* ucontext) {
   assert(sigInfo);
+  TnStatus status;
 
   int val = sigInfo->si_value.sival_int;
   pid_t pid = sigInfo->si_pid;
 
-  if (ctx->TxPid && ctx->TxPid != pid) {
-    fprintf(stderr, "Error: process %d tried to access receiver\n", pid);
-    exit(1);
-  }
+  if (RxCtx.TxPid && RxCtx.TxPid != pid)
+    ExitWithMessage("Other transmitter tried to send message");
 
   if (sigNum == CMD_SIGNUM) {
-    if (ctx->TxPid == 0) ctx->TxPid = pid;
-    status = ReceiverControlCallback(&ctx->Receiver, val, pid);
-    if (TnStatusOk(status)) fprintf(stderr, "OK\n");
-
+    if (RxCtx.TxPid == 0) RxCtx.TxPid = pid;
+    status = ReceiverControlCallback(&RxCtx.Receiver, val, pid);
   } else if (sigNum == DATA_INT_SIGNUM) {
-    if (ctx->TxPid == 0) {
-      fprintf(stderr, "Error: receiver not started but data received\n");
-      exit(1);
-    }
-    status = ReceiverIntCallback(&ctx->Receiver, val);
+    if (RxCtx.TxPid == 0)
+      ExitWithMessage("Receiver not started but data received\n");
+    status = ReceiverIntCallback(&RxCtx.Receiver, val);
   } else if (sigNum == DATA_CHAR_SIGNUM) {
-    if (ctx->TxPid == 0) {
-      fprintf(stderr, "Error: receiver not started but data received\n");
-      exit(1);
-    }
-    status = ReceiverCharCallback(&ctx->Receiver, (char)val);
-  } else {
-    fprintf(stderr, "Error: unexpected signal received\n");
-    exit(1);
-  }
+    if (RxCtx.TxPid == 0)
+      ExitWithMessage("Receiver not started but data received\n");
+    status = ReceiverCharCallback(&RxCtx.Receiver, (char)val);
+  } else
+    ExitWithMessage("Unexpected signal received\n");
 
   TnStatusAssert(status);
 }
@@ -43,36 +30,26 @@ static void RxSigHandler(int sigNum, siginfo_t* sigInfo, void* ctxPtr) {
 void RxDriver() {
   fprintf(stderr, "Starting receiver on pid %d...\n", getpid());
 
-  rxCtx.TxPid = 0;
+  RxCtx.TxPid = 0;
   TnStatus status;
 
   int sigQueueCapacity = sysconf(_SC_SIGQUEUE_MAX);
-  status = ReceiverInit(&rxCtx.Receiver, STDOUT_FILENO, sigQueueCapacity);
-    
+  status = ReceiverInit(&RxCtx.Receiver, STDOUT_FILENO, sigQueueCapacity);
+
   TnStatusAssert(status);
 
   struct sigaction sigAction;
   sigAction.sa_sigaction = RxSigHandler;
+  sigAction.sa_flags = SA_SIGINFO;
+
   sigemptyset(&sigAction.sa_mask);
   sigaddset(&sigAction.sa_mask, DATA_INT_SIGNUM);
   sigaddset(&sigAction.sa_mask, DATA_CHAR_SIGNUM);
   sigaddset(&sigAction.sa_mask, CMD_SIGNUM);
-  sigAction.sa_flags = SA_SIGINFO;
 
-  if (sigaction(DATA_INT_SIGNUM, &sigAction, NULL) != 0) {
-    perror("sigaction");
-    exit(1);
-  }
-
-  if (sigaction(DATA_CHAR_SIGNUM, &sigAction, NULL) != 0) {
-    perror("sigaction");
-    exit(1);
-  }
-
-  if (sigaction(CMD_SIGNUM, &sigAction, NULL) != 0) {
-    perror("sigaction");
-    exit(1);
-  }
+  SigactionWrapper(DATA_INT_SIGNUM, &sigAction);
+  SigactionWrapper(DATA_CHAR_SIGNUM, &sigAction);
+  SigactionWrapper(CMD_SIGNUM, &sigAction);
 
   sigset_t set;
   sigfillset(&set);
@@ -80,6 +57,6 @@ void RxDriver() {
 
   TnStatusAssert(status);
 
-  status = ReceiverSpin(&rxCtx.Receiver);
+  status = ReceiverSpin(&RxCtx.Receiver);
   TnStatusAssert(status);
 }

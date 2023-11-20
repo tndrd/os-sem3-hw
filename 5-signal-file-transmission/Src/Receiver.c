@@ -3,6 +3,13 @@
 TnStatus ReceiverInit(Receiver* self, int fd, size_t queueCapacity) {
   if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
 
+  self->Fd = fd;
+  self->DoStop = 0;
+  self->DoStart = 0;
+  self->Status = TN_OK;
+  self->Errno = 0;
+  self->Remains = 0;
+
   TnStatus status = QueueInit(&self->Queue, queueCapacity);
 
   if (!TnStatusOk(status)) return status;
@@ -13,14 +20,6 @@ TnStatus ReceiverInit(Receiver* self, int fd, size_t queueCapacity) {
     QueueDestroy(&self->Queue);
     return TNSTATUS(TN_ERRNO);
   }
-
-  self->Fd = fd;
-  self->DoStop = 0;
-  self->DoStart = 0;
-  self->Status = TN_OK;
-  self->Errno = 0;
-  self->Remains = 0;
-
   pthread_mutex_init(&self->Mutex, NULL);
   pthread_cond_init(&self->Cond, NULL);
 
@@ -131,8 +130,7 @@ static void* ReceiverMainLoop(void* selfPtr) {
 
   sigset_t sigset;
   sigfillset(&sigset);
-
-  assert(pthread_sigmask(SIG_BLOCK, &sigset, NULL) == 0);
+  pthread_sigmask(SIG_BLOCK, &sigset, NULL) == 0;
 
   ReceiverLock(self);
   while (!self->DoStart) ReceiverSleep(self);
@@ -148,7 +146,6 @@ static void* ReceiverMainLoop(void* selfPtr) {
     while (self->Queue.Size == 0 && !self->DoStop) ReceiverSleep(self);
 
     ReceiverFlushQueue(self);
-
     ReceiverUnlock(self);
 
     if (self->DoStop) break;
@@ -186,8 +183,6 @@ TnStatus ReceiverIntCallback(Receiver* self, int val) {
   ReceiverLock(self);
   TnStatus status = QueuePush(&self->Queue, &val);
   TnStatusAssert(status);
-
-  // if (self->Queue.Size == self->Queue.Capacity)
   ReceiverSignal(self);
   ReceiverUnlock(self);
 

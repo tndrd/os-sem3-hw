@@ -30,7 +30,7 @@ target_link_libraries(RxMain PUBLIC RxDriver)
 add_executable(TxMain Src/TxMain.c)
 target_link_libraries(TxMain PUBLIC TxDriver)
 
-# Copy benchmarks to build directory
+# Copy scripts to build directory
 configure_file(Tests/GenTestData.sh ${CMAKE_CURRENT_BINARY_DIR}/GenTestData.sh COPYONLY)
 configure_file(Tests/GenTests.py ${CMAKE_CURRENT_BINARY_DIR}/GenTests.py COPYONLY)
 configure_file(Tests/CompareMd5.py ${CMAKE_CURRENT_BINARY_DIR}/CompareMd5.py COPYONLY)
