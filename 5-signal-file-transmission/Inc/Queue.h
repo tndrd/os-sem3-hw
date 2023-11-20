@@ -1,8 +1,8 @@
 #pragma once
 #include <stdlib.h>
-#include "assert.h"
 
 #include "TnStatus.h"
+#include "assert.h"
 
 typedef struct {
   int* Buffer;
