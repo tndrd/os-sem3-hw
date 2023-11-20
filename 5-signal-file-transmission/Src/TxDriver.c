@@ -21,7 +21,7 @@ static void TxSigHandler(int sigNum, siginfo_t* sigInfo, void* ctxPtr) {
     exit(1);
   }
 
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
 
 void TxDriver(pid_t rxPid) {
@@ -32,7 +32,7 @@ void TxDriver(pid_t rxPid) {
   TnStatus status;
   
   status = TransmitterInit(&txCtx.Transmitter, STDIN_FILENO, rxPid, 1);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   struct sigaction sigAction;
 
@@ -46,8 +46,8 @@ void TxDriver(pid_t rxPid) {
   pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 
   status = TransmitterStart(&txCtx.Transmitter);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   status = TransmitterSpin(&txCtx.Transmitter);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }

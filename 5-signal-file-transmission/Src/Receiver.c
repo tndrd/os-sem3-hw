@@ -140,7 +140,7 @@ static void* ReceiverMainLoop(void* selfPtr) {
 
   sigVal.sival_int = CMD_CONNECT;
   TnStatus status = SendSignal(self->TxPid, CMD_SIGNUM, sigVal);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   while (1) {
     ReceiverLock(self);
@@ -158,7 +158,7 @@ static void* ReceiverMainLoop(void* selfPtr) {
 
   sigVal.sival_int = CMD_FINISH;
   status = SendSignal(self->TxPid, CMD_SIGNUM, sigVal);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   self->Status = TN_OK;
   return NULL;
@@ -185,7 +185,7 @@ TnStatus ReceiverIntCallback(Receiver* self, int val) {
 
   ReceiverLock(self);
   TnStatus status = QueuePush(&self->Queue, &val);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   // if (self->Queue.Size == self->Queue.Capacity)
   ReceiverSignal(self);

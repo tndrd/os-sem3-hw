@@ -17,5 +17,4 @@
 #define DATA_CHAR_SIGNUM BASE_SIGNUM + 1
 #define CMD_SIGNUM BASE_SIGNUM + 2
 
-void AssertTnStatus(TnStatus status);
 TnStatus SendSignal(pid_t pid, int sigNo, sigval_t value);

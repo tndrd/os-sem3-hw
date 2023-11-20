@@ -63,7 +63,7 @@ static void TransmitterSendCmd(Transmitter* self, int cmd) {
   sigval_t sigVal;
   sigVal.sival_int = cmd;
   TnStatus status = SendSignal(self->RxPid, CMD_SIGNUM, sigVal);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
 
 TnStatus TransmitterControlCallback(Transmitter* self, int val) {
@@ -122,7 +122,7 @@ static void TransmitterSendInt(Transmitter* self, int val) {
   sigVal.sival_int = val;
 
   TnStatus status = SendSignal(self->RxPid, DATA_INT_SIGNUM, sigVal);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
 
 static void TransmitterSendChar(Transmitter* self, char val) {
@@ -132,7 +132,7 @@ static void TransmitterSendChar(Transmitter* self, char val) {
   sigVal.sival_int = val;
 
   TnStatus status = SendSignal(self->RxPid, DATA_CHAR_SIGNUM, sigVal);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
 
 static TnStatus ReadFromFdToInt(int fd, int* val, int* hasEof, int* remains) {

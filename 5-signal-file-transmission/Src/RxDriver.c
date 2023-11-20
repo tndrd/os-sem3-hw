@@ -37,7 +37,7 @@ static void RxSigHandler(int sigNum, siginfo_t* sigInfo, void* ctxPtr) {
     exit(1);
   }
 
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
 
 void RxDriver() {
@@ -49,7 +49,7 @@ void RxDriver() {
   int sigQueueCapacity = sysconf(_SC_SIGQUEUE_MAX);
   status = ReceiverInit(&rxCtx.Receiver, STDOUT_FILENO, sigQueueCapacity);
     
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   struct sigaction sigAction;
   sigAction.sa_sigaction = RxSigHandler;
@@ -78,8 +78,8 @@ void RxDriver() {
   sigfillset(&set);
   pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 
   status = ReceiverSpin(&rxCtx.Receiver);
-  AssertTnStatus(status);
+  TnStatusAssert(status);
 }
