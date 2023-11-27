@@ -1,12 +1,14 @@
 #pragma once
+#include <assert.h>
+
 #include "TnStatus.h"
 
-typedef struct {
+typedef struct WDListNodeImpl {
   int Wd;
   const char* Path;
 
-  WDListNode* Next;
-  WDListNode* Prev;
+  struct WDListNodeImpl* Next;
+  struct WDListNodeImpl* Prev;
 } WDListNode;
 
 typedef struct {
@@ -17,6 +19,8 @@ typedef struct {
 
 TnStatus WatchDescriptorListInit(WatchDescriptorList* self);
 TnStatus WatchDescriptorListDestroy(WatchDescriptorList* self);
-TnStatus WatchDescriptorListAdd(WatchDescriptorList* self, int newWd, const char* path);
+TnStatus WatchDescriptorListAdd(WatchDescriptorList* self, int newWd,
+                                const char* path);
 TnStatus WatchDescriptorListRemove(WatchDescriptorList* self, WDListNode* node);
-TnStatus WatchDescriptorListFind(WatchDescriptorList* self, int targetWd, WDListNode** ret);
+TnStatus WatchDescriptorListFind(WatchDescriptorList* self, int targetWd,
+                                 WDListNode** ret);

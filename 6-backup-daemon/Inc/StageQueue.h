@@ -4,11 +4,12 @@
 
 #include "TnStatus.h"
 #include "Stage.h"
+#include "Logger.h"
 
 #define STAGE_QUEUE_INITIAL_CAPACITY 2
 
 typedef struct {
-  Logger* logger;
+  Logger* Logger;
 
   Stage* Buffer;
   size_t Size;
@@ -19,7 +20,7 @@ typedef struct {
 
 TnStatus StageQueueInit(StageQueue* self, Logger* logger);
 TnStatus StageQueueDestroy(StageQueue* self);
-TnStatus StageQueuePush(StageQueue* self, const int* val);
-TnStatus StageQueuePop(StageQueue* self, int* val);
+TnStatus StageQueuePush(StageQueue* self, const Stage* val);
+TnStatus StageQueuePop(StageQueue* self, Stage* val);
 
 static TnStatus StageQueueResize(StageQueue* self);
