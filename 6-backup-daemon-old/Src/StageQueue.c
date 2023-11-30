@@ -1,7 +1,7 @@
 #include "StageQueue.h"
 
 TnStatus StageQueueInit(StageQueue* self, Logger* logger) {
-  if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
+  if (!self || !logger) return TNSTATUS(TN_BAD_ARG_PTR);
 
   Stage* newBuffer = (Stage*)malloc(STAGE_QUEUE_INITIAL_CAPACITY * sizeof(Stage));
   if (!newBuffer) return TNSTATUS(TN_BAD_ALLOC);

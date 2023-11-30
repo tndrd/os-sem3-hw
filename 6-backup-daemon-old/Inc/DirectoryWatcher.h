@@ -15,6 +15,7 @@
 #include "WatchDescriptorMap.h"
 
 #define DIR_WATCHER_N_BUCKETS 256
+#define INOTIFY_EVENT_MAX_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
 
 typedef size_t DirWatcherId;
 struct DirectoryWatcherImpl;
@@ -44,6 +45,10 @@ typedef struct DirectoryWatcherImpl {
 
   TnStatus Status;
   int Errno;
+
+  int Finished;
+
+  char buffer[INOTIFY_EVENT_MAX_SIZE];
 } DirectoryWatcher;
 
 TnStatus DirectoryWatcherInit(DirectoryWatcher* self, DirWatcherId id,
@@ -119,3 +124,5 @@ static TnStatus DirectoryWatcherRegisterTree(DirectoryWatcher* self,
                                              const char* path, size_t pathSize);
 
 TnStatus DirectoryWatcherGetStage(DirectoryWatcher* self, Stage* ret);
+
+static TnStatus DirectoryWatcherProcessEvents(DirectoryWatcher* self);

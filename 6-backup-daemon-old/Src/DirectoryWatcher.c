@@ -51,6 +51,7 @@ TnStatus DirectoryWatcherInit(DirectoryWatcher* self, DirWatcherId id,
   self->INotifyFd = iNotifyFd;
   self->Id = id;
   self->DoStop = 0;
+  self->Finished = 0;
   return TN_OK;
 }
 
@@ -61,10 +62,19 @@ TnStatus DirectoryWatcherStart(DirectoryWatcher* self, const char* path) {
   const char* newPath = strdup(path);
   if (!newPath) return TNSTATUS(TN_BAD_ALLOC);
 
-  status = DirectoryWatcherRegisterTree(self, newPath, strlen(newPath));
+  int newWd;
+  status = DirectoryWatcherRegisterTree(self, newPath, strlen(newPath) + 1);
   if (!TnStatusOk(status)) return status;
 
   self->Path = newPath;
+
+  /*
+  uint32_t mask = IN_CREATE | IN_MODIFY | IN_DELETE | IN_DELETE_SELF;
+  if (inotify_add_watch (self->INotifyFd, self->Path, mask) < 0) {
+      perror("inotify_add_watch()");
+      return TNSTATUS(TN_ERRNO);
+  }
+  */
 
   int ret = pthread_create(&self->Thread, NULL, DirectoryWatcherMainLoop, self);
   if (ret != 0) {
@@ -126,16 +136,14 @@ static void DirectoryWatcherSignal(DirectoryWatcher* self) {
   pthread_cond_signal(&self->Cond);
 }
 
-static TnStatus ReadFromFd(int fd, char* buf, size_t size) {
-  size_t total = 0;
+static TnStatus ReadEvents(int fd, char* buffer, size_t size, size_t* nRead) {
+  assert(buffer);
+  assert(nRead);
 
-  while (total != size) {
-    int ret = read(fd, buf + total, size - total);
-    if (ret <= 0) return TNSTATUS(TN_ERRNO);
+  int ret = read(fd, buffer, size);
+  if (ret <= 0) return TNSTATUS(TN_ERRNO);
 
-    total += ret;
-  }
-
+  *nRead = ret;
   return TN_OK;
 }
 
@@ -147,16 +155,38 @@ static void* DirectoryWatcherFinish(DirectoryWatcher* self, TnStatus status) {
   assert(self->Callback.ErrorHandler);
   self->Callback.ErrorHandler(self, self->Callback.Arg);
 
+  self->Finished = 1;
+  DirectoryWatcherSignal(self);
+
   return NULL;
+}
+
+static TnStatus DirectoryWatcherProcessEvents(DirectoryWatcher* self) {
+  assert(self);
+  TnStatus status;
+  const struct inotify_event* event;
+
+  size_t nRead;
+  status =
+      ReadEvents(self->INotifyFd, self->buffer, sizeof(self->buffer), &nRead);
+  LOG_INFO("Nread: %zu", nRead);
+  if (!TnStatusOk(status)) return status;
+
+  for (char* ptr = self->buffer; ptr < self->buffer + nRead;
+       ptr += sizeof(struct inotify_event) + event->len) {
+    event = (const struct inotify_event*)ptr;
+
+    status = DirectoryWatcherDispatchEvent(self, event);
+    if (!TnStatusOk(status)) return status;
+  }
+
+  return TN_OK;
 }
 
 static void* DirectoryWatcherMainLoop(void* selfPtr) {
   assert(selfPtr);
   DirectoryWatcher* self = (DirectoryWatcher*)selfPtr;
   TnStatus status;
-
-  char buffer[sizeof(struct inotify_event) + NAME_MAX + 1];
-  const struct inotify_event* event = (const struct inotify_event*)buffer;
 
   while (1) {
     DirectoryWatcherLock(self);
@@ -167,14 +197,10 @@ static void* DirectoryWatcherMainLoop(void* selfPtr) {
     }
     DirectoryWatcherUnlock(self);
 
-    status = ReadFromFd(self->INotifyFd, buffer, sizeof(buffer));
-    if (!TnStatusOk(status)) return DirectoryWatcherFinish(self, status);
-
-    status = DirectoryWatcherDispatchEvent(self, event);
+    status = DirectoryWatcherProcessEvents(self);
     if (!TnStatusOk(status)) return DirectoryWatcherFinish(self, status);
   }
 }
-
 static void DirectoryWatcherFatalErrorHandler(DirectoryWatcher* self) {
   assert(self);
   TnStatus status;
@@ -194,7 +220,7 @@ static TnStatus DirectoryWatcherHandleFileEvent(
   size_t pathSize;
 
   status = DirectoryWatcherGetPathOfEvent(self, event, &path, &pathSize);
-  if (TnStatusOk(status)) return status;
+  if (!TnStatusOk(status)) return status;
 
   status =
       DirectoryWatcherEmplaceStage(self, STAGE_FILE, sType, path, pathSize);
@@ -221,7 +247,8 @@ static TnStatus DirectoryWatcherHandleDirectoryCreatedEvent(
     DirectoryWatcher* self, const struct inotify_event* event) {
   assert(self);
   assert(event);
-  assert(event->mask & IN_ISDIR & IN_CREATE);
+  assert(event->mask & IN_ISDIR);
+  assert(event->mask & IN_CREATE);
   TnStatus status;
 
   const char* path;
@@ -229,7 +256,7 @@ static TnStatus DirectoryWatcherHandleDirectoryCreatedEvent(
   Stage stage;
 
   status = DirectoryWatcherGetPathOfEvent(self, event, &path, &pathSize);
-  if (TnStatusOk(status)) return status;
+  if (!TnStatusOk(status)) return status;
 
   status = DirectoryWatcherRegisterTree(self, path, pathSize);
   if (!TnStatusOk(status)) return status;
@@ -238,8 +265,6 @@ static TnStatus DirectoryWatcherHandleDirectoryCreatedEvent(
                                         pathSize);
   if (!TnStatusOk(status)) return status;
 
-  LOG_INFO("Registered new directory: %s", path);
-
   return TN_OK;
 }
 
@@ -247,7 +272,9 @@ static TnStatus DirectoryWatcherHandleDirectoryDeletedEvent(
     DirectoryWatcher* self, const struct inotify_event* event) {
   assert(self);
   assert(event);
-  assert(event->mask & IN_ISDIR & IN_DELETE);
+  assert(event->mask & IN_ISDIR);
+  assert(event->mask & IN_DELETE);
+
   TnStatus status;
 
   const char* path;
@@ -255,10 +282,7 @@ static TnStatus DirectoryWatcherHandleDirectoryDeletedEvent(
   Stage stage;
 
   status = DirectoryWatcherGetPathOfEvent(self, event, &path, &pathSize);
-  if (TnStatusOk(status)) {
-    LOG_ERROR("Failed to get path of event on %s", event->name);
-    return status;
-  }
+  if (!TnStatusOk(status)) return status;
 
   status = DirectoryWatcherEmplaceStage(self, STAGE_DIR, STAGE_DELETED, path,
                                         pathSize);
@@ -266,8 +290,6 @@ static TnStatus DirectoryWatcherHandleDirectoryDeletedEvent(
 
   status = DirectoryWatcherUnregisterDirectory(self, event->wd);
   if (!TnStatusOk(status)) return status;
-
-  LOG_INFO("Unregistered directory %s", path);
 
   return TN_OK;
 }
@@ -278,10 +300,15 @@ static TnStatus DirectoryWatcherDispatchEvent(
   assert(event);
   TnStatus status;
 
+  LOG_INFO("Is directory: %d", !!(event->mask & IN_ISDIR));
+  LOG_INFO("Is deleted: %d", !!(event->mask & IN_DELETE));
+  LOG_INFO("Is self deleted: %d", !!(event->mask & IN_DELETE_SELF));
+  LOG_INFO("Is QOVERFLW: %d", !!(event->mask & IN_Q_OVERFLOW));
+
   if (event->mask & IN_ISDIR) {
     if (event->mask & IN_CREATE)
       return DirectoryWatcherHandleDirectoryCreatedEvent(self, event);
-    if (event->mask & IN_DELETE)
+    if (event->mask & IN_DELETE_SELF)
       return DirectoryWatcherHandleDirectoryDeletedEvent(self, event);
   } else {
     if (event->mask & IN_CREATE)
@@ -327,10 +354,9 @@ static TnStatus DirectoryWatcherEmplaceStage(DirectoryWatcher* self,
   return TN_OK;
 }
 
-static TnStatus DirectoryWatcherGetPathOfEvent(DirectoryWatcher* self,
-                                               const struct inotify_event* event,
-                                               const char** newPathPtr,
-                                               size_t* newPathSizePtr) {
+static TnStatus DirectoryWatcherGetPathOfEvent(
+    DirectoryWatcher* self, const struct inotify_event* event,
+    const char** newPathPtr, size_t* newPathSizePtr) {
   if (!self || !event) return TNSTATUS(TN_BAD_ARG_PTR);
   TnStatus status;
   WDListNode* node;
@@ -362,7 +388,7 @@ static TnStatus DirectoryWatcherRegisterDirectory(DirectoryWatcher* self,
                                                   int* newWd) {
   if (!self || !path || !newWd) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  uint32_t mask = IN_CREATE | IN_MODIFY | IN_DELETE;
+  uint32_t mask = IN_CREATE | IN_MODIFY | IN_DELETE | IN_DELETE_SELF | IN_EXCL_UNLINK;
   int wd = inotify_add_watch(self->INotifyFd, path, mask);
   if (wd < 0) return TNSTATUS(TN_ERRNO);
 
@@ -371,6 +397,8 @@ static TnStatus DirectoryWatcherRegisterDirectory(DirectoryWatcher* self,
     inotify_rm_watch(self->INotifyFd, wd);
     return status;
   }
+
+  LOG_INFO("Registered new directory: %s", path);
 
   *newWd = wd;
   return TN_OK;
@@ -401,6 +429,8 @@ static TnStatus DirectoryWatcherUnregisterDirectoryNode(DirectoryWatcher* self,
 
   status = WatchDescriptorMapRemove(&self->WDMap, wd);
   if (!TnStatusOk(status)) return status;
+
+  LOG_INFO("Unregistered directory: %s", path);
 
   free((char*)path);
   inotify_rm_watch(self->INotifyFd, wd);
@@ -433,7 +463,8 @@ static TnStatus DirectoryWatcherUnregisterAllDirectories(
 // Sizes should include '\0' character
 static TnStatus ConcatenatePath(const char* path, size_t pathSize,
                                 const char* name, size_t nameSize,
-                                const char** newPathPtr, size_t* newPathSizePtr) {
+                                const char** newPathPtr,
+                                size_t* newPathSizePtr) {
   if (!path || !name || !newPathPtr || !newPathSizePtr)
     return TNSTATUS(TN_BAD_ARG_PTR);
 
@@ -460,6 +491,8 @@ static TnStatus DirectoryWatcherRegisterTree_Recursive(DirectoryWatcher* self,
   if (!self || !path) return TNSTATUS(TN_BAD_ARG_PTR);
   TnStatus status;
 
+  LOG_INFO("{%s}[%zu]", path, pathSize);
+
   DIR* directory = opendir(path);
   if (!directory) return TNSTATUS(TN_ERRNO);
 
@@ -471,8 +504,8 @@ static TnStatus DirectoryWatcherRegisterTree_Recursive(DirectoryWatcher* self,
   }
 
   struct dirent* curDir = NULL;
-  while ((curDir = readdir(directory)) != NULL) {
-    if (curDir->d_type = DT_REG) continue;
+  while (0 && (curDir = readdir(directory)) != NULL) {
+    if (curDir->d_type == DT_REG) continue;
 
     if (curDir->d_type != DT_DIR) {
       LOG_WARN("File type %d is not supported", curDir->d_type);
@@ -486,18 +519,13 @@ static TnStatus DirectoryWatcherRegisterTree_Recursive(DirectoryWatcher* self,
 
     status =
         ConcatenatePath(path, pathSize, name, nameSize, &newPath, &newPathSize);
-    if (!TnStatusOk(status)) {
-      closedir(directory);
-      break;
-    }
+    if (!TnStatusOk(status)) break;
 
     status = DirectoryWatcherRegisterTree_Recursive(self, newPath, newPathSize);
-    if (!TnStatusOk(status)) {
-      closedir(directory);
-      break;
-    }
+    if (!TnStatusOk(status)) break;
   }
 
+  closedir(directory);
   return status;
 }
 
@@ -515,12 +543,12 @@ TnStatus DirectoryWatcherGetStage(DirectoryWatcher* self, Stage* ret) {
   TnStatus status;
 
   DirectoryWatcherLock(self);
-  while(self->StageQueue.Size == 0)
+  while (self->StageQueue.Size == 0 && !self->Finished)
     DirectoryWatcherSleep(self);
 
   status = StageQueuePop(&self->StageQueue, ret);
   DirectoryWatcherUnlock(self);
-  
+
   return status;
 }
 

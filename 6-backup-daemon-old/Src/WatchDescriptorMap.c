@@ -7,7 +7,7 @@ TnStatus WatchDescriptorMapInit(WatchDescriptorMap* self, size_t nBuckets,
   if (nBuckets == 0) return TNSTATUS(TN_BAD_ARG_VAL);
   self->Logger = logger;
 
-  TnStatus status;
+  TnStatus status = TN_OK;
   WatchDescriptorList* newBuckets =
       (WatchDescriptorList*)malloc(nBuckets * sizeof(WatchDescriptorList));
 
@@ -85,13 +85,13 @@ TnStatus WatchDescriptorMapRemove(WatchDescriptorMap* self, int targetWd) {
   WDListNode* node;
 
   status = WatchDescriptorListFind(list, targetWd, &node);
-  assert(TnStatusOk(status));
+  TnStatusAssert(status);
   assert(node);
 
   const char* path = node->Path;
 
   status = WatchDescriptorListRemove(list, node);
-  assert(TnStatusOk(status));
+  TnStatusAssert(status);
 
   return TN_OK;
 }
@@ -125,32 +125,65 @@ TnStatus WatchDescriptorMapGetIterator(WatchDescriptorMap* self,
   iter->Bucket = 0;
   iter->ListN = 0;
   iter->Node = NULL;
+
+  return TN_OK;
+}
+
+static int WDMapIteratorFindNextBucket(WDMapIterator* self) {
+  while (1) {
+    if (self->Bucket == self->Map->NBuckets) return 0;
+    if (self->Map->Buckets[self->Bucket].Size > 0) return 1;
+
+    self->Bucket++;
+  }
 }
 
 TnStatus WDMapIteratorGetNext(WDMapIterator* self, WDListNode** node) {
   if (!self || !node) return TNSTATUS(TN_BAD_ARG_PTR);
 
-  while (self->Bucket < self->Map->NBuckets &&
-         self->Map->Buckets[self->Bucket].Size == 0) {
-    self->Bucket++;
-  }
-
-  if (self->Bucket == self->Map->NBuckets) *node = NULL;
-
-  if (self->ListN == self->Map->Buckets[self->Bucket].Size) {
-    self->Bucket++;
+  if (!WDMapIteratorFindNextBucket(self)) {
+    *node = NULL;
+    return TN_OK;
   }
 
   if (self->ListN == 0)
     self->Node = self->Map->Buckets[self->Bucket].DummyTail.Next;
 
   assert(self->Node);
-  *node = self->Node;
 
-  self->Node = self->Node->Next;
+  *node = self->Node;
   self->ListN++;
+  self->Node = self->Node->Next;
+
+  if (self->ListN == self->Map->Buckets[self->Bucket].Size) {
+    self->Bucket++;
+    WDMapIteratorFindNextBucket(self);
+    self->ListN = 0;
+  }
 
   return TN_OK;
+}
+
+TnStatus WDMapDump(WatchDescriptorMap* self) {
+  if (!self) return TNSTATUS(TN_BAD_ARG_PTR);
+  TnStatus status;
+
+  WDMapIterator iter;
+  status = WatchDescriptorMapGetIterator(self, &iter);
+
+  if (!TnStatusOk(status)) return status;
+
+  WDListNode* node;
+
+  while (1) {
+    status = WDMapIteratorGetNext(&iter, &node);
+    if (!TnStatusOk(status)) break;
+    if (!node) break;
+
+    fprintf(stderr, "Node %d: %s\n", node->Wd, node->Path);
+  }
+
+  return status;
 }
 
 #undef ENTITY_NAME

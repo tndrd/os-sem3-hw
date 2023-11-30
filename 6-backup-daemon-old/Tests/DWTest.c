@@ -1,8 +1,10 @@
 #include "DirectoryWatcher.h"
 
 void ErrorHandlerImpl(DirectoryWatcher* self, void* arg) {
-  fprintf(stderr, "Got error: %s\n",
-          TnStatusCodeGetDescription(self->Status.Code));
+#define ENTITY_NAME "DirectoryWatcher"
+  LOG_ERROR("ErrorHandler: TnStatus", "");
+  TnStatusPrintDescription(self->Status);
+#undef ENTITY_NAME
 }
 
 void ErrorHandler(DirectoryWatcher* self, void* arg) {
@@ -37,6 +39,9 @@ int main(int argc, char* argv[]) {
   const char* fType;
   const char* sType;
 
+  status = WDMapDump(&dw.WDMap);
+  TnStatusAssert(status);
+
   while (1) {
     status = DirectoryWatcherGetStage(&dw, &stage);
     TnStatusAssert(status);
@@ -48,10 +53,11 @@ int main(int argc, char* argv[]) {
       case STAGE_FILE:
         fType = "File";
         break;
-      default: assert(0);
+      default:
+        assert(0);
     }
 
-    switch(stage.StageType) {
+    switch (stage.StageType) {
       case STAGE_CREATED:
         sType = "created";
         break;
@@ -61,9 +67,12 @@ int main(int argc, char* argv[]) {
       case STAGE_DELETED:
         sType = "deleted";
         break;
-      default: assert(0);
+      default:
+        assert(0);
     }
 
     fprintf(stderr, "\"%s\": %s %s\n", stage.Path, fType, sType);
+    status = WDMapDump(&dw.WDMap);
+    TnStatusAssert(status);
   }
 }

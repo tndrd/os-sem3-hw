@@ -9,6 +9,8 @@ TnStatus WatchDescriptorListInit(WatchDescriptorList* self) {
   self->DummyTail.Wd = -1;
   self->Size = 0;
   self->Head = &self->DummyTail;
+
+  return TN_OK;
 }
 
 TnStatus WatchDescriptorListDestroy(WatchDescriptorList* self) {
@@ -63,6 +65,9 @@ TnStatus WatchDescriptorListRemove(WatchDescriptorList* self,  WDListNode* node)
   }
 
   free(node);
+  self->Size--;
+
+  return TN_OK;
 }
 
 TnStatus WatchDescriptorListFind(WatchDescriptorList* self, int targetWd, WDListNode** ret) {

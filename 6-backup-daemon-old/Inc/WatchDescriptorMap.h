@@ -29,6 +29,8 @@ TnStatus WatchDescriptorMapRemove(WatchDescriptorMap* self, int targetWd);
 TnStatus WatchDescriptorMapGetIterator(WatchDescriptorMap* self, WDMapIterator* iter);
 TnStatus WDMapIteratorGetNext(WDMapIterator* iter, WDListNode** node);
 
+TnStatus WDMapDump(WatchDescriptorMap* self);
+
 static int WDMapHash(int wd);
 static WatchDescriptorList* WDMapGetBucket(WatchDescriptorMap* self, int wd);
 static int WDMapHas(WatchDescriptorMap* self, int wd);

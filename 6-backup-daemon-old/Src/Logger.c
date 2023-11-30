@@ -51,7 +51,7 @@ static void LoggerPrintTime(Logger* self) {
   time_t now = time(0);
 
   strftime(buf, BUF_SIZE, "%Y-%m-%d %H:%M:%S", localtime(&now));
-  fprintf(self->File, "[%s]\n", buf);
+  fprintf(self->File, "[%s]", buf);
 
 #undef BUF_SIZE
 }
