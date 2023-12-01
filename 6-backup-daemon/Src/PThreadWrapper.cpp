@@ -1,5 +1,3 @@
-#pragma once
-
 #include "PThreadWrapper.hpp"
 
 using namespace HwBackup::PThread;
@@ -61,7 +59,7 @@ void Thread::Join() {
 }
 
 Thread::~Thread() {
-  if (!IsJoined.Get()) THROW("Thread is not joined");  // Similar to std::thread
+  if (!IsJoined.Get()) STDERR_WARN("Thread is not joined");
 }
 
 void Thread::Kill(int sig) {

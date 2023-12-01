@@ -12,9 +12,10 @@
 
 namespace HwBackup {
 
-class Logger {
+class Logger final {
  public:
-  using StreamPtr = std::unique_ptr<std::ostream>;
+  // using StreamPtr = std::unique_ptr<std::ostream>;
+  using StreamPtr = std::ostream*;
 
  public:
   enum class LoggingLevel { Info, Warn, Error, Quiet };
@@ -24,7 +25,7 @@ class Logger {
   PThread::Mutex Mutex;
 
  public:
-  Logger(StreamPtr&& stream);
+  Logger(StreamPtr& stream);
 
   std::ostream& Start(LoggingLevel level);
   void End();

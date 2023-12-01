@@ -15,7 +15,7 @@ namespace HwBackup {
  * Stores wd-path pairs and supports O(1)
  * addition/search/removal
  */
-class WDCache {
+class WDCache final {
  public:
   using WDescriptorT = int;
 

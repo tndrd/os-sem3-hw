@@ -9,7 +9,7 @@ class StateValueWrapper {
 
  public:
   explicit StateValueWrapper(T&& value) : Value{std::move(value)} {}
-  StateValueWrapper(): T{} {}
+  StateValueWrapper() : Value{} {}
 
   StateValueWrapper(const StateValueWrapper&) = delete;
   StateValueWrapper& operator=(const StateValueWrapper&) = delete;

@@ -1,17 +1,15 @@
-#pragma once
-
 #include "Logger.hpp"
 
 using namespace HwBackup;
 
-Logger::Logger(StreamPtr&& stream) : StreamImpl{std::move(stream)} {
-  if (StreamImpl.get() == nullptr) THROW("Stream is NULL");
+Logger::Logger(StreamPtr& stream) : StreamImpl{std::move(stream)} {
+  if (StreamImpl == nullptr) THROW("Stream is NULL");
 }
 
 std::ostream& Logger::Start(LoggingLevel level) {
   Mutex.Lock();
 
-  assert(StreamImpl.get());
+  assert(StreamImpl);
 
   PutColor(level);
   PutTimestamp();
@@ -34,7 +32,7 @@ void Logger::PutTimestamp() {
   std::string Buf(32, 0);
   time_t now = time(0);
 
-  strftime(Buf.data(), Buf.size(), "%Y-%m-%d %H:%M:%S", localtime(&now));
+  strftime(&Buf[0], Buf.size(), "%Y-%m-%d %H:%M:%S", localtime(&now));
   *StreamImpl << "[" << Buf << "]";
 }
 
@@ -54,7 +52,7 @@ const char* Logger::LevelToString(LoggingLevel level) {
 }
 
 void Logger::PutLevel(LoggingLevel level) {
-  *StreamImpl << "[" << LevelToString(level) << "]";
+  *StreamImpl << "[" << LevelToString(level) << "] ";
 }
 
 void Logger::PutColor(LoggingLevel level) {

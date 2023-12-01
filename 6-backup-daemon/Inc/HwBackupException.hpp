@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "Helpers.hpp"
+
 namespace HwBackup {
 
 using std::string_literals::operator""s;
@@ -25,8 +27,6 @@ class Exception : public std::exception {
   virtual ~Exception() = default;
 };
 
-#define XSTRINGIFY(a) STRINGIFY(a)
-#define STRINGIFY(a) #a
 #define THROW(msg) \
   throw HwBackup::Exception(msg, __FILE__, __FUNCTION__, XSTRINGIFY(__LINE__))
 

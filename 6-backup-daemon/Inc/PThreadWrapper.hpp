@@ -12,23 +12,23 @@
 namespace HwBackup {
 namespace PThread {
 
-class Mutex : public StateValueWrapper<pthread_mutex_t> {
+class Mutex final: public StateValueWrapper<pthread_mutex_t> {
  public:
   Mutex();
-  virtual ~Mutex();
+  ~Mutex();
   void Lock();
   void Unlock();
 };
 
-class Cond : public StateValueWrapper<pthread_cond_t> {
+class Cond final: public StateValueWrapper<pthread_cond_t> {
  public:
   Cond();
-  virtual ~Cond();
+  ~Cond();
   void Wait(Mutex& mutex);
   void Signal();
 };
 
-class Thread {
+class Thread final {
  public:
   using Routine = void* (*)(void*);
 
@@ -39,7 +39,7 @@ class Thread {
  public:
   Thread(Routine target, void* args);
   Thread();
-  virtual ~Thread();
+  ~Thread();
 
   Thread(Thread&&) = default;
   Thread& operator=(Thread&&) = default;

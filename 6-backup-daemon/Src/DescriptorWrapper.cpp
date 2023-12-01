@@ -1,5 +1,3 @@
-#pragma once
-
 #include "DescriptorWrapper.hpp"
 
 using namespace HwBackup;

@@ -6,17 +6,19 @@
 #include <string>
 #include <utility>
 
-#include "HwBackupException.hpp"
 #include "StateValueWrapper.hpp"
 #include "StderrWarning.hpp"
 
 namespace HwBackup {
 
-class DescriptorWrapper : public StateValueWrapper<int> {
+class DescriptorWrapper final: public StateValueWrapper<int> {
  public:
   DescriptorWrapper(int);
   DescriptorWrapper() = default;
-  virtual ~DescriptorWrapper();
+  ~DescriptorWrapper();
+
+  DescriptorWrapper(DescriptorWrapper&&) = default;
+  DescriptorWrapper& operator=(DescriptorWrapper&&) = default;
 };
 
 }  // namespace HwBackup
