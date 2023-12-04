@@ -1,4 +1,5 @@
 #include "FSMonitor.hpp"
+#include "BackupProducer.hpp"
 
 using namespace HwBackup;
 
@@ -11,13 +12,18 @@ int main(int argc, char* argv[]) {
   Logger logger {LoggingStream};
 
   FSMonitor monitor {1, &logger};
+  BackupProducer backup {&logger};
 
+  backup.Open("dst/", path);
   monitor.Start(path);
 
+  PathTree stages;
+
   while(1) {
-    auto stages = monitor.GetStages();
-    
-    for (const auto& stage: stages)
-      std::cout << stage << std::endl;
+    monitor.GetStages(stages);
+    stages.Dump(std::cout);
+    backup.Backup(stages);
+
+    stages.Clear();
   }
 }
