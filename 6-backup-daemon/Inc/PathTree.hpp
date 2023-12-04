@@ -3,10 +3,10 @@
 #include <assert.h>
 
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include "HwBackupException.hpp"
 #include "StderrWarning.hpp"
@@ -20,6 +20,7 @@ struct PathTree final {
 
     std::string Path;
     std::vector<PtrT> Children;
+    bool VisitorDone = false;
 
     Node(const std::string& path);
   };
@@ -29,14 +30,14 @@ struct PathTree final {
   std::unordered_map<std::string, Node*> Map;
 
  public:
-  using VisitF = std::function<void(const std::string&)>;
+  using VisitF = std::function<bool(const std::string&)>;
 
   PathTree();
 
   void AddPath(const std::string& path, const std::string& name);
 
-  void VisitPostOrder(VisitF func) const;
-  void VisitPreOrder(VisitF func) const;
+  void VisitPostOrder(VisitF func);
+  void VisitPreOrder(VisitF func);
   void Clear();
 
   PathTree(const PathTree&) = delete;
@@ -50,8 +51,8 @@ struct PathTree final {
   void Dump(std::ostream& os) const;
 
  private:
-  void VisitRecursivePostOrder(const Node& node, VisitF func) const;
-  void VisitRecursivePreOrder(const Node& node, VisitF func) const;
+  void VisitRecursivePostOrder(Node& node, VisitF func);
+  void VisitRecursivePreOrder(Node& node, VisitF func);
 };
 
 }  // namespace HwBackup

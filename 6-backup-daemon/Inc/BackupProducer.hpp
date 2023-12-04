@@ -122,18 +122,18 @@ class BackupProducer {
     return ret;
   }
 
-  void Backup(const PathTree& tree) {
+  void Backup(PathTree& tree) {
     LOG_INFO(GetLogger(), "Backup forward...");
 
     tree.VisitPreOrder(
-        [this](const std::string& path) { this->BackupForward(path); });
+        [this](const std::string& path) { return this->BackupForward(path); });
 
     LOG_INFO(GetLogger(), "Backup backward...");
     tree.VisitPostOrder(
-        [this](const std::string& path) { this->BackupBackward(path); });
+        [this](const std::string& path) { return this->BackupBackward(path); });
   }
 
-  void BackupForward(const std::string& path) {
+  bool BackupForward(const std::string& path) {
     StatResult src = Stat(SrcRoot + path);
     StatResult dst = Stat(DstRoot + path);
 
@@ -141,47 +141,53 @@ class BackupProducer {
       if (S_ISREG(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Removing file \"" << path << "\"");
         DeleteFile(path);
+        return true;
       }
-      if (S_ISDIR(src.Stat.st_mode)) {
+      if (S_ISDIR(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Skipping dir \"" << path << "\"");
+        return false;
       }
-      return;
     }
 
     if (src.Exists && dst.Exists) {  // File modified
-      // if (S_ISDIR(src.Stat.st_mode) && S_ISDIR(dst.Stat.st_mode)) return;
+      if (S_ISDIR(src.Stat.st_mode) && S_ISDIR(dst.Stat.st_mode)) return true;
 
       if (S_ISREG(src.Stat.st_mode) && S_ISREG(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Modifying file \"" << path << "\"");
         SyncFile(path);
+        return true;
       }
 
       if (S_ISREG(src.Stat.st_mode) && S_ISDIR(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Skipping dir->file  \"" << path << "\"");
+        return false;
       }
 
       if (S_ISDIR(src.Stat.st_mode) && S_ISREG(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Changing file->dir \"" << path << "\"");
         DeleteFile(path);
         MakeDir(path);
+        return true;
       }
-
-      return;
     }
 
     if (src.Exists && dst.Exists == false) {  // File created
       if (S_ISDIR(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Creating dir \"" << path << "\"");
         MakeDir(path);
+        return true;
       }
       if (S_ISREG(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Creating file \"" << path << "\"");
         SyncFile(path);
+        return true;
       }
     }
+
+    return true;
   }
 
-  void BackupBackward(const std::string& path) {
+  bool BackupBackward(const std::string& path) {
     StatResult src = Stat(SrcRoot + path);
     StatResult dst = Stat(DstRoot + path);
 
@@ -189,8 +195,8 @@ class BackupProducer {
       if (S_ISDIR(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Deleting dir \"" << path << "\"");
         DeleteDir(path);
+        return true;
       }
-      return;
     }
 
     if (src.Exists && dst.Exists) {
@@ -198,14 +204,16 @@ class BackupProducer {
         LOG_INFO(GetLogger(), "Changing dir->file \"" << path << "\"");
         DeleteDir(path);
         SyncFile(path);
+        return true;
       }
     }
+
+    return true;
   }
 
   void MakeDir(const std::string& path) {
     std::string dst = DstRoot + path;
     int ret = mkdir(dst.c_str(), 0777);
-    LOG_WARN(GetLogger(), "Creating directory " << dst);
     if (ret < 0) THROW_ERRNO("mkdir(" + dst + "): ", errno);
   }
 

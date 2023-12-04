@@ -42,44 +42,48 @@ void PathTree::AddPath(const std::string& path, const std::string& name) {
   Map[pathName] = parent->Children.back().get();
 }
 
-void PathTree::VisitPostOrder(VisitF func) const {
+void PathTree::VisitPostOrder(VisitF func) {
   VisitRecursivePostOrder(*Root, func);
 }
-void PathTree::VisitPreOrder(VisitF func) const {
+void PathTree::VisitPreOrder(VisitF func) {
   VisitRecursivePreOrder(*Root, func);
 }
 
 void PathTree::Clear() {
   Root->Children.clear();
+  Root->VisitorDone = false;
   Map.clear();
   Map[Root->Path] = Root.get();
 }
 
-void PathTree::VisitRecursivePreOrder(const Node& node, VisitF func) const {
-  STDERR_WARN("Visiting \"" << node.Path << "\"");
-  func(node.Path);
+void PathTree::VisitRecursivePreOrder(Node& node, VisitF func) {
+  if (!node.VisitorDone)
+    node.VisitorDone = func(node.Path);
 
   for (const auto& childPtr : node.Children)
     VisitRecursivePreOrder(*childPtr, func);
 }
 
-void PathTree::VisitRecursivePostOrder(const Node& node, VisitF func) const {
+void PathTree::VisitRecursivePostOrder(Node& node, VisitF func) {
   for (const auto& childPtr : node.Children)
     VisitRecursivePostOrder(*childPtr, func);
 
-  func(node.Path);
+  if (!node.VisitorDone)
+    node.VisitorDone = func(node.Path);
 }
 
 void PathTree::Dump(std::ostream& os) const {
   size_t indent = 0;
 
-  std::function<void(const Node&)> func;
+  std::function<bool(const Node&)> func;
   func = [&indent, &os, &func](const Node& node) {
     os << std::string(indent, ' ') << node.Path << std::endl;
     indent++;
 
     for (const auto& child : node.Children) func(*child);
     indent--;
+
+    return true;
   };
 
   func(*Root);
