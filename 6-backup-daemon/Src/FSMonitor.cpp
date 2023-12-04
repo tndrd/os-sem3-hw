@@ -37,33 +37,27 @@ void FSMonitor::Unregister(const std::string& path) {
   Unregister(iter);
 }
 
-auto FSMonitor::GetStages() -> std::vector<Stage> {
+void FSMonitor::GetStages(PathTree& tree) {
   int len = read(Fd.Get(), Buffer.data(), Buffer.size());
   if (len < 0) THROW_ERRNO("read()", errno);
 
   const inotify_event* event;
   const uint8_t* ptr = Buffer.data();
 
-  std::vector<Stage> stages;
-
   for (; ptr < Buffer.data() + len; ptr += sizeof(inotify_event) + event->len) {
     event = reinterpret_cast<const inotify_event*>(ptr);
 
-    if (event->mask & IN_IGNORED) continue; // Ignore the IN_INGNORED event
+    if (event->mask & IN_IGNORED) continue;  // Ignore the IN_INGNORED event
 
     auto cached = Cache.Find(event->wd);
     if (cached == Cache.End()) THROW("Watch desciptor is not cached");
 
-    std::string eventPath = cached->Path + "/" + event->name;
-
-    HandleEvent(*event, eventPath);
-    stages.emplace_back(INotifyEventToStage(*event, eventPath));
+    HandleEvent(*event, cached->Path);
+    tree.AddPath(cached->Path, event->name);
   }
-
-  return stages;
 }
 
-auto FSMonitor::FdInit() -> DescriptorWrapper {
+DescriptorWrapper FSMonitor::FdInit() {
   int ret = inotify_init();
   if (ret < 0) THROW_ERRNO("inotify_init()", errno);
 
@@ -76,13 +70,18 @@ auto FSMonitor::BufferInit(size_t eventCapacity) -> BufferT {
 
 int FSMonitor::RmWatch(int wd) const { return inotify_rm_watch(Fd.Get(), wd); }
 
-void FSMonitor::RegisterPoll(pollfd& pollFd) {
-  pollFd.fd = Fd.Get();
-  pollFd.events = POLLIN;
+void FSMonitor::RegisterAt(Selector& selector) {
+  if (IsSelected) THROW("Already selected");
+
+  SelectableId = selector.Register(Fd.Get(), POLLIN);
+  IsSelected = true;
 }
 
-bool FSMonitor::PollPending(const pollfd& pollFd) {
-  return pollFd.fd == Fd.Get();
+bool FSMonitor::DataReady(const Selector& selector) const {
+  if (!IsSelected) THROW("Not selected");
+
+  short events = selector.GetEvents(SelectableId);
+  return events & POLLIN;
 }
 
 void FSMonitor::UnregisterAll() {
@@ -95,8 +94,10 @@ void FSMonitor::UnregisterAll() {
 }
 
 void FSMonitor::HandleEvent(const inotify_event& event,
-                            const std::string& eventPath) {
+                            const std::string& path) {
   if (!(event.mask & IN_ISDIR)) return;
+
+  std::string eventPath = path + "/" + event.name;
 
   if (event.mask & IN_CREATE) {  // New directory created
     LOG_INFO(GetLogger(), "New directory created on \"" << eventPath << "\"");
@@ -196,30 +197,4 @@ void FSMonitor::Stop() {
   Started = false;
   UnregisterAll();
   RootPath = "";
-}
-
-Stage FSMonitor::INotifyEventToStage(const inotify_event& event,
-                                     const std::string& eventPath) {
-  using FileT = Stage::FileT;
-  using ChangeT = Stage::ChangeT;
-
-  FileT fileT = FileT::Undefined;
-  ChangeT changeT = ChangeT::Undefined;
-
-  if (event.mask & IN_ISDIR) {
-    fileT = FileT::Directory;
-  } else {
-    fileT = FileT::Regular;
-  }
-
-  if (event.mask & IN_CREATE) changeT = ChangeT::Created;
-
-  if (event.mask & IN_MODIFY) changeT = ChangeT::Modified;
-
-  if (event.mask & IN_DELETE) changeT = ChangeT::Deleted;
-
-  if (fileT == FileT::Undefined) THROW("Failed to translate file type");
-  if (changeT == ChangeT::Undefined) THROW("Failed to translate change type");
-
-  return Stage::Create(fileT, changeT, eventPath);
 }

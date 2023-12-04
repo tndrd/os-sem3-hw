@@ -8,8 +8,9 @@
 
 #include "DescriptorWrapper.hpp"
 #include "Logger.hpp"
+#include "Selector.hpp"
 #include "WDCache.hpp"
-#include "Stage.hpp"
+#include "PathTree.hpp"
 
 namespace HwBackup {
 
@@ -30,6 +31,9 @@ class FSMonitor final {
   std::string RootPath;
   bool Started = false;
 
+  size_t SelectableId;
+  bool IsSelected = false;
+
  public:
   FSMonitor(size_t eventCapacity, Logger* loggerPtr);
 
@@ -44,10 +48,11 @@ class FSMonitor final {
  public:
   void Start(const std::string& rootPath);
   void Stop();
+  void GetStages(PathTree& dst);
 
-  std::vector<Stage> GetStages();
-  void RegisterPoll(pollfd& pollFd);
-  bool PollPending(const pollfd& pollFd);
+ public:
+  void RegisterAt(Selector& selector);
+  bool DataReady(const Selector& selector) const;
 
  private:
   void Register(const std::string& eventPath, uint32_t mask);
@@ -68,8 +73,6 @@ class FSMonitor final {
 
   int RmWatch(int wd) const;
   void Unregister(WDCache::ListIt it);
-
-  static Stage INotifyEventToStage(const inotify_event& event, const std::string& eventPath);
 };
 
 }  // namespace HwBackup
