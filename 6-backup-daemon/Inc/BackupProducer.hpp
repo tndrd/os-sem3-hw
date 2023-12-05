@@ -54,32 +54,13 @@ class BackupProducer {
   }
 
   void Open(const std::string& dstPath, const std::string& srcPath) {
-    /*
-    auto newHeaderFile = OpenFile(dstPath + HEADER_NAME);
-    auto newStagesFile = OpenFile(dstPath + STAGES_NAME);
-    auto newDstRoot = dstPath;
-    auto newSrcRoot = srcPath;
-    auto newHeaderData = ReadHeaderFile(newHeaderFile);
-
-    std::swap(HeaderFile, newHeaderFile);
-    std::swap(StagesFile, newStagesFile);
-    std::swap(DstRoot, newDstRoot);
-    std::swap(SrcRoot, newSrcRoot);
-    std::swap(HeaderData, newHeaderData);
-
-    LOG_INFO(GetLogger(), "Opened backup directory at \"" << DstRoot << "\"");
-    LOG_INFO(GetLogger(), "Number of stages: " << HeaderData.NStages);
-
-    SyncHeader();
-    */
-
     DstRoot = dstPath;
     SrcRoot = srcPath;
 
     PathTree tree;
     tree.AddDir(dstPath);
     tree.AddDir(srcPath);
-    Backup(tree);
+    Sync(tree);
   }
 
   static FileType OpenFile(const std::string& filePath) {
@@ -127,18 +108,18 @@ class BackupProducer {
     return ret;
   }
 
-  void Backup(PathTree& tree) {
-    LOG_INFO(GetLogger(), "Backup forward...");
+  void Sync(PathTree& tree) {
+    LOG_INFO(GetLogger(), "Sync forward...");
 
     tree.VisitPreOrder(
-        [this](const std::string& path) { return this->BackupForward(path); });
+        [this](const std::string& path) { return this->SyncForward(path); });
 
-    LOG_INFO(GetLogger(), "Backup backward...");
+    LOG_INFO(GetLogger(), "Sync backward...");
     tree.VisitPostOrder(
-        [this](const std::string& path) { return this->BackupBackward(path); });
+        [this](const std::string& path) { return this->SyncBackward(path); });
   }
 
-  bool BackupForward(const std::string& path) {
+  bool SyncForward(const std::string& path) {
     StatResult src = Stat(SrcRoot + path);
     StatResult dst = Stat(DstRoot + path);
 
@@ -192,7 +173,7 @@ class BackupProducer {
     return true;
   }
 
-  bool BackupBackward(const std::string& path) {
+  bool SyncBackward(const std::string& path) {
     StatResult src = Stat(SrcRoot + path);
     StatResult dst = Stat(DstRoot + path);
 
@@ -261,7 +242,5 @@ class BackupProducer {
     return {true, st};
   }
 };  // namespace HwBackup
-
-class BackupRestorer {};
 
 }  // namespace HwBackup

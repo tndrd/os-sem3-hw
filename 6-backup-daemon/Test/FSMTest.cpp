@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   while(1) {
     monitor.GetStages(stages);
     stages.Dump(std::cout);
-    backup.Backup(stages);
+    backup.Sync(stages);
 
     stages.Clear();
   }
