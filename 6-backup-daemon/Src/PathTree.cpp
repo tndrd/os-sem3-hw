@@ -14,8 +14,6 @@ PathTree::Node::Node(const std::string& path) : Path{path} {}
 void PathTree::AddPath(const std::string& path, const std::string& name) {
   std::string pathName = path + "/" + name;
 
-  STDERR_WARN("Adding path \"" << pathName);
-
   auto found = Map.find(pathName);
   if (found != Map.end()) return;
 
@@ -44,7 +42,6 @@ void PathTree::AddPath(const std::string& path, const std::string& name) {
 
 void PathTree::AddDir(const std::string& rootPath) {
   auto func = [this](const std::string& path, const std::string& name) {
-    STDERR_WARN(path << "/" << name);
     this->AddPath(path, name);
   };
 
