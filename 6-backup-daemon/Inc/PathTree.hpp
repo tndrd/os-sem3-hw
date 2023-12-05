@@ -1,15 +1,18 @@
 #pragma once
 
 #include <assert.h>
+#include <dirent.h>
 
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
 #include "HwBackupException.hpp"
 #include "StderrWarning.hpp"
+#include "FileTree.hpp"
 
 namespace HwBackup {
 
@@ -35,6 +38,7 @@ struct PathTree final {
   PathTree();
 
   void AddPath(const std::string& path, const std::string& name);
+  void AddDir(const std::string& dirPath);
 
   void VisitPostOrder(VisitF func);
   void VisitPreOrder(VisitF func);

@@ -42,9 +42,19 @@ void PathTree::AddPath(const std::string& path, const std::string& name) {
   Map[pathName] = parent->Children.back().get();
 }
 
+void PathTree::AddDir(const std::string& rootPath) {
+  auto func = [this](const std::string& path, const std::string& name) {
+    STDERR_WARN(path << "/" << name);
+    this->AddPath(path, name);
+  };
+
+  FileTree::DFS(rootPath, func);
+}
+
 void PathTree::VisitPostOrder(VisitF func) {
   VisitRecursivePostOrder(*Root, func);
 }
+
 void PathTree::VisitPreOrder(VisitF func) {
   VisitRecursivePreOrder(*Root, func);
 }
@@ -57,8 +67,7 @@ void PathTree::Clear() {
 }
 
 void PathTree::VisitRecursivePreOrder(Node& node, VisitF func) {
-  if (!node.VisitorDone)
-    node.VisitorDone = func(node.Path);
+  if (!node.VisitorDone) node.VisitorDone = func(node.Path);
 
   for (const auto& childPtr : node.Children)
     VisitRecursivePreOrder(*childPtr, func);
@@ -68,8 +77,7 @@ void PathTree::VisitRecursivePostOrder(Node& node, VisitF func) {
   for (const auto& childPtr : node.Children)
     VisitRecursivePostOrder(*childPtr, func);
 
-  if (!node.VisitorDone)
-    node.VisitorDone = func(node.Path);
+  if (!node.VisitorDone) node.VisitorDone = func(node.Path);
 }
 
 void PathTree::Dump(std::ostream& os) const {

@@ -75,6 +75,11 @@ class BackupProducer {
 
     DstRoot = dstPath;
     SrcRoot = srcPath;
+
+    PathTree tree;
+    tree.AddDir(dstPath);
+    tree.AddDir(srcPath);
+    Backup(tree);
   }
 
   static FileType OpenFile(const std::string& filePath) {

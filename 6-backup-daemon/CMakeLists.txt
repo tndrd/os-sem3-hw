@@ -18,11 +18,14 @@ target_link_libraries(Logger PUBLIC PThreadWrapper)
 add_library(Selector Src/Selector.cpp)
 target_link_libraries(Selector PUBLIC HwBackupException)
 
+add_library(FileTree Src/FileTree.cpp)
+target_link_libraries(FileTree PUBLIC HwBackupException)
+
 add_library(FSMonitor Src/FSMonitor.cpp)
-target_link_libraries(FSMonitor PUBLIC WDCache DescriptorWrapper Logger Selector)
+target_link_libraries(FSMonitor PUBLIC WDCache DescriptorWrapper Logger Selector FileTree)
 
 add_library(PathTree Src/PathTree.cpp)
-target_link_libraries(PathTree PUBLIC HwBackupException)
+target_link_libraries(PathTree PUBLIC HwBackupException FileTree)
 
 add_library(BackupProducer Src/BackupProducer.cpp)
 target_link_libraries(BackupProducer PUBLIC PathTree)
