@@ -1,5 +1,6 @@
 #include "FSMonitor.hpp"
 #include "BackupProducer.hpp"
+#include "Incremental.hpp"
 
 using namespace HwBackup;
 
@@ -12,9 +13,10 @@ int main(int argc, char* argv[]) {
   Logger logger {LoggingStream};
 
   FSMonitor monitor {1, &logger};
-  BackupProducer backup {&logger};
+  IEventObserver::PtrT incr = std::make_unique<IncrBackupProducer> ("dst/History/", &logger);
+  BackupProducer backup {&logger, std::move(incr)};
 
-  backup.Open("dst/", path);
+  backup.Open(path, "dst/Cache/");
   monitor.Start(path);
 
   PathTree stages;

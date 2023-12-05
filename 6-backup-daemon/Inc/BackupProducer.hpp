@@ -13,6 +13,7 @@
 
 #include "DescriptorWrapper.hpp"
 #include "HwBackupException.hpp"
+#include "IEventObserver.hpp"
 #include "Logger.hpp"
 #include "PathTree.hpp"
 
@@ -47,16 +48,19 @@ class BackupProducer {
   FileType HeaderFile;
 
   HeaderDataT HeaderData = {};
+  IEventObserver::PtrT Observer;
 
  public:
-  BackupProducer(Logger* loggerPtr) : LoggerPtr{loggerPtr} {
+  BackupProducer(Logger* loggerPtr, IEventObserver::PtrT&& eventObserver)
+      : LoggerPtr{loggerPtr}, Observer{std::move(eventObserver)} {
     if (!loggerPtr) THROW("Logger pointer is null");
   }
 
-  void Open(const std::string& dstPath, const std::string& srcPath) {
+  void Open(const std::string& srcPath, const std::string& dstPath) {
     DstRoot = dstPath;
     SrcRoot = srcPath;
 
+    Observer->Open(srcPath, dstPath);
     PathTree tree;
     tree.AddDir(dstPath);
     tree.AddDir(srcPath);
@@ -71,41 +75,6 @@ class BackupProducer {
     if (!newFile) THROW_ERRNO("Failed open file", errno);
 
     return {newFile, FileDeleter{}};
-  }
-
-  static HeaderDataT ReadHeaderFile(FileType& file) {
-    size_t stageId;
-    int ret = FileRead(file.get(), "%zu", &stageId);
-
-    if (ret == EOF) {
-      stageId = 0;
-    } else if (ret == 0)
-      THROW("Failed to read header");
-
-    return {stageId};
-  }
-
-  void SyncHeader() const {
-    int ret = ftruncate(fileno(HeaderFile.get()), 0);
-    if (ret < 0) THROW_ERRNO("Failed to truncate file", errno);
-    FileWrite(HeaderFile.get(), "%zu", HeaderData.NStages);
-  }
-
-  template <typename... Args>
-  static int FileRead(FILE* file, const char* fmt, Args... args) {
-    int ret = fscanf(file, fmt, args...);
-    if (ret == EOF && ferror(file))
-      THROW_ERRNO("Failed to read from file", errno);
-
-    return ret;
-  }
-
-  template <typename... Args>
-  static int FileWrite(FILE* file, const char* fmt, Args... args) {
-    int ret = fprintf(file, fmt, args...);
-    if (ret < 0) THROW_ERRNO("Failed to write to file", errno);
-
-    return ret;
   }
 
   void Sync(PathTree& tree) {
@@ -139,8 +108,10 @@ class BackupProducer {
       if (S_ISDIR(src.Stat.st_mode) && S_ISDIR(dst.Stat.st_mode)) return true;
 
       if (S_ISREG(src.Stat.st_mode) && S_ISREG(dst.Stat.st_mode)) {
+        if (!FileWasChanged(src.Stat.st_mtim, dst.Stat.st_mtim)) return true;
+
         LOG_INFO(GetLogger(), "Modifying file \"" << path << "\"");
-        SyncFile(path);
+        ModifyFile(path);
         return true;
       }
 
@@ -152,7 +123,7 @@ class BackupProducer {
       if (S_ISDIR(src.Stat.st_mode) && S_ISREG(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Changing file->dir \"" << path << "\"");
         DeleteFile(path);
-        MakeDir(path);
+        CreateDir(path);
         return true;
       }
     }
@@ -160,12 +131,12 @@ class BackupProducer {
     if (src.Exists && dst.Exists == false) {  // File created
       if (S_ISDIR(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Creating dir \"" << path << "\"");
-        MakeDir(path);
+        CreateDir(path);
         return true;
       }
       if (S_ISREG(src.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Creating file \"" << path << "\"");
-        SyncFile(path);
+        CreateFile(path);
         return true;
       }
     }
@@ -189,7 +160,7 @@ class BackupProducer {
       if (S_ISREG(src.Stat.st_mode) && S_ISDIR(dst.Stat.st_mode)) {
         LOG_INFO(GetLogger(), "Changing dir->file \"" << path << "\"");
         DeleteDir(path);
-        SyncFile(path);
+        CreateFile(path);
         return true;
       }
     }
@@ -197,7 +168,16 @@ class BackupProducer {
     return true;
   }
 
-  void MakeDir(const std::string& path) {
+  bool FileWasChanged(timespec src, timespec dst) {
+    if (src.tv_sec > dst.tv_sec) return true;
+    if (src.tv_sec < dst.tv_sec) THROW("Time travel is not possible");
+    if (src.tv_sec == dst.tv_sec) return src.tv_nsec > dst.tv_nsec;
+    assert(0); // Supress warning
+  }
+
+  void CreateDir(const std::string& path) {
+    Observer->CreateDir(path);
+
     std::string dst = DstRoot + path;
     int ret = mkdir(dst.c_str(), 0777);
     if (ret < 0) THROW_ERRNO("mkdir(" + dst + "): ", errno);
@@ -212,18 +192,32 @@ class BackupProducer {
     if (pid < 0) THROW_ERRNO("fork()", errno);
 
     if (pid == 0) {  // Child
-      execlp("cp", "cp", src.c_str(), dst.c_str(), NULL);
+      execlp("cp", "cp", src.c_str(), dst.c_str(), "--preserve", NULL);
     } else {  // Parent
       wait(NULL);
     }
   }
 
+  void CreateFile(const std::string& path) {
+    Observer->CreateFile(path);
+    SyncFile(path);
+  }
+
+  void ModifyFile(const std::string& path) {
+    Observer->ModifyFile(path);
+    SyncFile(path);
+  }
+
   void DeleteFile(const std::string& path) {
+    Observer->DeleteFile(path);
+
     int ret = unlink((DstRoot + path).c_str());
     if (ret < 0) THROW_ERRNO("unlink()", errno);
   }
 
   void DeleteDir(const std::string& path) {
+    Observer->DeleteDir(path);
+
     int ret = rmdir((DstRoot + path).c_str());
     if (ret < 0) THROW_ERRNO("rmdir()", errno);
   }

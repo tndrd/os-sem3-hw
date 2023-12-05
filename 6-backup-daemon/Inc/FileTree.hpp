@@ -8,6 +8,7 @@
 #include <string>
 
 #include "HwBackupException.hpp"
+#include "StderrWarning.hpp"
 
 namespace HwBackup {
 namespace FileTree {
@@ -18,7 +19,16 @@ struct DirWrapper {
 
   using DirT = std::unique_ptr<DIR, DirDeleter>;
 
-  static DirT CreateDir(const std::string& path);
+  static DirT OpenDir(const std::string& path);
+};
+
+struct FileWrapper {
+  struct FileDeleter {
+    void operator()(FILE* file);
+  };
+  using FileT = std::unique_ptr<FILE, FileDeleter>;
+
+  static FileT OpenFile(const std::string& path, const std::string& mode);
 };
 
 using FuncT = std::function<void(const std::string&, const std::string&)>;

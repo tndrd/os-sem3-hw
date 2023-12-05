@@ -27,8 +27,13 @@ target_link_libraries(FSMonitor PUBLIC WDCache DescriptorWrapper Logger Selector
 add_library(PathTree Src/PathTree.cpp)
 target_link_libraries(PathTree PUBLIC HwBackupException FileTree)
 
+add_library(IEventObserver Src/IEventObserver.cpp)
+
+add_library(Incremental Src/Incremental.cpp)
+target_link_libraries(Incremental PUBLIC IEventObserver HwBackupException FileTree)
+
 add_library(BackupProducer Src/BackupProducer.cpp)
-target_link_libraries(BackupProducer PUBLIC PathTree)
+target_link_libraries(BackupProducer PUBLIC PathTree IEventObserver)
 
 add_executable(FSMTest Test/FSMTest.cpp)
-target_link_libraries(FSMTest PUBLIC FSMonitor BackupProducer)
+target_link_libraries(FSMTest PUBLIC FSMonitor BackupProducer Incremental)
