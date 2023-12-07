@@ -25,6 +25,7 @@ class Cond final: public StateValueWrapper<pthread_cond_t> {
   Cond();
   ~Cond();
   void Wait(Mutex& mutex);
+  void TimedWait(Mutex& mutex, const timespec& ts);
   void Signal();
 };
 

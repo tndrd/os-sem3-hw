@@ -39,6 +39,7 @@ IncrBackupProducer::IncrBackupProducer(const std::string& targetDir,
 void Incrp::Open(const std::string& srcRoot, const std::string& dstRoot) {
   SrcRoot = srcRoot;
   DstRoot = dstRoot;
+  TargetDir = dstRoot + TargetDir;
 
   OpenHeader();
   SyncHeader();
@@ -196,4 +197,9 @@ void Incrp::System(const std::string& cmd, std::function<bool(int)> exitCheck) {
 
 std::string Incrp::GetTarget(const std::string& path) const {
   return TargetDir + path;
+}
+
+std::unique_ptr<Incrp> Incrp::Create(const std::string& targetDir,
+                                     Logger* loggerPtr) {
+  return std::make_unique<IncrBackupProducer>(targetDir, loggerPtr);
 }

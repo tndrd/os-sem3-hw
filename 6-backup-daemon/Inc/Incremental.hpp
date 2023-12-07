@@ -47,13 +47,17 @@ struct IncrBackupProducer final : public IEventObserver {
  public:
   IncrBackupProducer(const std::string& targetDir, Logger* loggerPtr);
 
-  virtual void Open(const std::string& srcPath, const std::string& dstPath) override;
+  virtual void Open(const std::string& srcPath,
+                    const std::string& dstPath) override;
 
   virtual void CreateDir(const std::string& path) override;
   virtual void CreateFile(const std::string& path) override;
   virtual void DeleteDir(const std::string& path) override;
   virtual void DeleteFile(const std::string& path) override;
   virtual void ModifyFile(const std::string& path) override;
+
+  static std::unique_ptr<IncrBackupProducer> Create(
+      const std::string& targetDir, Logger* loggerPtr);
 
  private:
   void OpenHeader();
@@ -71,8 +75,9 @@ struct IncrBackupProducer final : public IEventObserver {
   void MakePatch(const std::string& before, const std::string& after,
                  const std::string& out);
 
-  void System(const std::string& cmd, std::function<bool(int)> exitCheck=DefaultExitCodeCheck{});
-  
+  void System(const std::string& cmd,
+              std::function<bool(int)> exitCheck = DefaultExitCodeCheck{});
+
   std::string GetTarget(const std::string& path) const;
 };
 };  // namespace HwBackup

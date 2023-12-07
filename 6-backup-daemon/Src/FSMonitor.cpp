@@ -73,15 +73,13 @@ int FSMonitor::RmWatch(int wd) const { return inotify_rm_watch(Fd.Get(), wd); }
 void FSMonitor::RegisterAt(Selector& selector) {
   if (IsSelected) THROW("Already selected");
 
-  SelectableId = selector.Register(Fd.Get(), POLLIN);
+  SelectorId = selector.Register(Fd.Get(), POLLIN);
   IsSelected = true;
 }
 
 bool FSMonitor::DataReady(const Selector& selector) const {
   if (!IsSelected) THROW("Not selected");
-
-  short events = selector.GetEvents(SelectableId);
-  return events & POLLIN;
+  return selector.GetEvents(SelectorId) & POLLIN;
 }
 
 void FSMonitor::UnregisterAll() {

@@ -2,14 +2,14 @@
 
 using namespace HwBackup;
 
-size_t Selector::Register(int fd, short events) {
+auto Selector::Register(int fd, short events) -> IdT {
   pollfd newPollFd;
 
   newPollFd.fd = fd;
   newPollFd.events = events;
 
   PollFds.push_back(newPollFd);
-  return PollFds.size() - 1;
+  return IdT{PollFds.size() - 1};
 }
 
 void Selector::Wait() {
@@ -17,6 +17,21 @@ void Selector::Wait() {
   if (ret < 0) THROW_ERRNO("poll()", errno);
 }
 
-short Selector::GetEvents(size_t i) const {
-  return PollFds.at(i).revents;
+short Selector::GetEvents(const IdT& i) const {
+  return PollFds.at(i.Get()).revents;
+}
+
+SelectorAlarm::SelectorAlarm() : Pipe{O_NONBLOCK} {}
+
+void SelectorAlarm::RegisterAt(Selector& selector) {
+  SelectorId = selector.Register(Pipe.GetOut(), POLLIN);
+}
+
+void SelectorAlarm::Alarm() {
+  int dummy = 42;
+  int ret = write(Pipe.GetIn(), &dummy, 1);
+}
+
+bool SelectorAlarm::HadAlarmed(const Selector& selector) {
+  return selector.GetEvents(SelectorId) & POLLIN;
 }

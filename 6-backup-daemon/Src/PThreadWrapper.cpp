@@ -35,6 +35,11 @@ void Cond::Wait(Mutex& mutex) {
   if (ret != 0) THROW_ERRNO("pthread_cond_wait()", ret);
 }
 
+void Cond::TimedWait(Mutex& mutex, const timespec& ts) {
+  int ret = pthread_cond_timedwait(&Get(), &mutex.Get(), &ts);
+  if (ret != 0) THROW_ERRNO("pthread_cond_timedwait()", ret);
+}
+
 void Cond::Signal() {
   int ret = pthread_cond_signal(&Get());
   if (ret != 0) THROW_ERRNO("pthread_cond_signal()", ret);

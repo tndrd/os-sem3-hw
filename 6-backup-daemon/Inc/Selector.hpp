@@ -1,15 +1,37 @@
 #include <poll.h>
+
 #include <vector>
-#include <HwBackupException.hpp>
+
+#include "Helpers.hpp"
 
 namespace HwBackup {
 struct Selector {
-  private:
-    std::vector<pollfd> PollFds;
-  public:
-    size_t Register(int fd, short events);
-    void Wait();
+ public:
+  using IdT = StateValueWrapper<size_t>;
 
-    short GetEvents(size_t i) const;
+ private:
+  std::vector<pollfd> PollFds;
+
+ public:
+  IdT Register(int fd, short events);
+  void Wait();
+
+  short GetEvents(const IdT& i) const;
 };
-}
+
+struct SelectorAlarm {
+ private:
+  Helpers::Pipe Pipe;
+  Selector::IdT SelectorId;
+
+ public:
+  SelectorAlarm();
+
+  SelectorAlarm(SelectorAlarm&&) = default;
+  SelectorAlarm& operator=(SelectorAlarm&&) = default;
+
+  void RegisterAt(Selector& selector);
+  void Alarm();
+  bool HadAlarmed(const Selector& selector);
+};
+}  // namespace HwBackup

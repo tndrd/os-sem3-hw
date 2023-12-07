@@ -31,7 +31,7 @@ class FSMonitor final {
   std::string RootPath;
   bool Started = false;
 
-  size_t SelectableId;
+  Selector::IdT SelectorId;
   bool IsSelected = false;
 
  public:
