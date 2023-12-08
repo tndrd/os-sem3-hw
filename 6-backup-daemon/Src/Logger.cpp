@@ -2,21 +2,21 @@
 
 using namespace HwBackup;
 
-Logger::Logger(StreamPtr& stream) : StreamImpl{std::move(stream)} {
-  if (StreamImpl == nullptr) THROW("Stream is NULL");
+Logger::Logger(StreamPtr&& stream) : StreamImpl{std::move(stream)} {
+  if (StreamImpl.Get() == nullptr) THROW("Stream is NULL");
 }
 
 std::ostream& Logger::Start(LoggingLevel level) {
   Mutex.Lock();
 
-  assert(StreamImpl);
+  assert(StreamImpl.Get());
 
   PutColor(level);
   PutTimestamp();
   PutLevel(level);
   ResetColor();
 
-  return *StreamImpl;
+  return *StreamImpl.Get();
 }
 
 std::ostream& Logger::StartInfo() { return Start(LoggingLevel::Info); }
@@ -24,7 +24,7 @@ std::ostream& Logger::StartWarning() { return Start(LoggingLevel::Warn); }
 std::ostream& Logger::StartError() { return Start(LoggingLevel::Error); }
 
 void Logger::End() {
-  *StreamImpl << std::endl;
+  *StreamImpl.Get() << std::endl;
   Mutex.Unlock();
 }
 
@@ -33,7 +33,7 @@ void Logger::PutTimestamp() {
   time_t now = time(0);
 
   strftime(&Buf[0], Buf.size(), "%Y-%m-%d %H:%M:%S", localtime(&now));
-  *StreamImpl << "[" << Buf << "]";
+  *StreamImpl.Get() << "[" << Buf << "]";
 }
 
 const char* Logger::LevelToString(LoggingLevel level) {
@@ -52,15 +52,15 @@ const char* Logger::LevelToString(LoggingLevel level) {
 }
 
 void Logger::PutLevel(LoggingLevel level) {
-  *StreamImpl << "[" << LevelToString(level) << "] ";
+  *StreamImpl.Get() << "[" << LevelToString(level) << "] ";
 }
 
 void Logger::PutColor(LoggingLevel level) {
-  *StreamImpl << LevelToColor(level);;
+  *StreamImpl.Get() << LevelToColor(level);;
 }
 
 void Logger::ResetColor(){
-  *StreamImpl << ResetColorStr();
+  *StreamImpl.Get() << ResetColorStr();
 }
 
 const char* Logger::LevelToColor(LoggingLevel level) {
@@ -78,3 +78,8 @@ const char* Logger::LevelToColor(LoggingLevel level) {
   }
 }
 const char* Logger::ResetColorStr() { return "\e[0m"; }
+
+Logger Logger::CreateDefault() {
+  std::ostream* stream = &std::cerr;
+  return Logger{StreamPtr{std::move(stream)}};
+}

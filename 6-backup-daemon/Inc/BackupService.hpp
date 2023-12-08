@@ -19,15 +19,18 @@ class BackupService {
   std::string DstPath;
 
   Logger* LoggerPtr;
-  PThread::Thread Thread;
+  PThread::Thread UpdateThread;
+  PThread::Thread SyncThread;
+
   mutable PThread::Mutex Mutex;
   PThread::Cond Cond;
 
   FSMonitor Monitor;
   BackupProducer Producer;
   Fifo::Listener Listener;
+  PathTree Stages;
 
-  Selector Selector;
+  Selector UpdateSelector;
   SelectorAlarm Alarm;
 
   size_t Period;
@@ -37,26 +40,36 @@ class BackupService {
  public:
   BackupService(const std::string& srcPath, const std::string& dstPath,
                 size_t period, Logger* loggerPtr)
-      : Monitor{1, loggerPtr},
-        Producer{std::move(ProducerInit(loggerPtr))},
-        Listener{dstPath + CHANNEL_NAME},
+      : DstPath{ValidatePath(dstPath)},
+        SrcPath{ValidatePath(srcPath)},
+        Monitor{1, loggerPtr},
+        Producer{std::move(ProducerInit(DstPath, loggerPtr))},
+        Listener{DstPath + CHANNEL_NAME},
         LoggerPtr{loggerPtr},
-        SrcPath{srcPath},
-        DstPath{dstPath},
         Period(period) {
-    Alarm.RegisterAt(Selector);
+    Alarm.RegisterAt(UpdateSelector);
   }
 
-  void Run() {}
+  void Run() {
+    DoStop = false;
+    Stages.Clear();
 
-  void Thread1() {
-    PathTree stages;
+    UpdateThread = {UpdateLoopAdapter, this};
+    SyncThread = {SyncLoopAdapter, this};
 
-    Monitor.RegisterAt(Selector);
-    Listener.RegisterAt(Selector);
+    Listener.Start();
+
+    LOG_INFO(GetLogger(), "Started with period=" << Period);
+  }
+
+  void UpdateLoop() {
+    Monitor.RegisterAt(UpdateSelector);
+    Listener.RegisterAt(UpdateSelector);
+
+    ValidatePath(DstPath + CACHE_NAME);
 
     Monitor.Start(SrcPath);
-    Producer.Open(SrcPath, DstPath + CACHE_NAME);
+    Producer.Open(SrcPath, DstPath, CACHE_NAME);
 
     while (1) {
       Mutex.Lock();
@@ -66,37 +79,71 @@ class BackupService {
       }
       Mutex.Unlock();
 
-      Selector.Wait();
+      UpdateSelector.Wait();
 
-      if (Monitor.DataReady(Selector)) {
+      if (Monitor.DataReady(UpdateSelector)) {
         Mutex.Lock();
-        Monitor.GetStages(stages);
+        Monitor.GetStages(Stages);
         Mutex.Unlock();
       }
 
-      if (Listener.DataReady(Selector)) {
-        size_t newPeriod;
-        uint8_t* buf = reinterpret_cast<uint8_t*>(&newPeriod);
-        Listener.ReadTo(buf, sizeof(size_t));
-
+      if (Listener.DataReady(UpdateSelector)) {
+        size_t newPeriod = Listener.GetData();
+        LOG_INFO(GetLogger(), "Setting new period: " << newPeriod);
         SetPeriod(newPeriod);
       }
 
-      if (Alarm.HadAlarmed(Selector)) LOG_INFO(GetLogger(), "Got alarm");
+      if (Alarm.HadAlarmed(UpdateSelector)) continue;
     }
   }
 
-  void Thread2() {
+  static void* UpdateLoopAdapter(void* selfPtr) {
+    assert(selfPtr);
+    BackupService* self = reinterpret_cast<BackupService*>(selfPtr);
+    self->UpdateLoop();
+    return NULL;
+  }
+
+  void SyncLoop() {
     while (1) {
       Mutex.Lock();
+
+      timespec ts = GetPeriodTimespec();
+      Cond.TimedWait(Mutex, ts);
+
       if (DoStop) {
         Mutex.Unlock();
         break;
       }
 
-      timespec ts = GetPeriodTimespec();
-      Cond.TimedWait
+      if (!Stages.IsEmpty()) {
+        Producer.Sync(Stages);
+        Stages.Clear();
+      }
+      Mutex.Unlock();
     }
+  }
+
+  static void* SyncLoopAdapter(void* selfPtr) {
+    assert(selfPtr);
+    BackupService* self = reinterpret_cast<BackupService*>(selfPtr);
+    self->SyncLoop();
+    return NULL;
+  }
+
+  void Stop() {
+    Mutex.Lock();
+
+    DoStop = true;
+
+    Alarm.Alarm();
+    Cond.Signal();
+    Mutex.Unlock();
+
+    UpdateThread.Join();
+    SyncThread.Join();
+
+    Listener.Stop();
   }
 
   void SetPeriod(size_t newPeriod) {
@@ -118,9 +165,11 @@ class BackupService {
     return FSMonitor{1, loggerPtr};
   }
 
-  static BackupProducer ProducerInit(Logger* loggerPtr) {
+  static BackupProducer ProducerInit(const std::string& dstPath,
+                                     Logger* loggerPtr) {
     return BackupProducer{loggerPtr,
-                          IncrBackupProducer::Create(HISTORY_NAME, loggerPtr)};
+                          IncrBackupProducer::Create(
+                              ValidatePath(dstPath + HISTORY_NAME), loggerPtr)};
   }
 
   Logger& GetLogger() {
@@ -130,25 +179,41 @@ class BackupService {
 
   timespec GetPeriodTimespec() const {
     timespec ts;
-    size_t ms = GetPeriod();
+    size_t ms = Period;
     clock_gettime(CLOCK_REALTIME, &ts);
 
     size_t ns_per_s = 1000 * 1000 * 1000;
+
+    size_t ns = (ms % 1000) * 1000 * 1000;
+    size_t s = ms / 1000;
+
+    ts.tv_sec += s;
+    ts.tv_nsec += ns;
 
     // Make tv_nsec < 1s
     while (ts.tv_nsec > ns_per_s) {
       ts.tv_nsec -= ns_per_s;
       ts.tv_sec++;
     }
-    
-    // ns < 1ms
-    size_t ns = ms % 1000;
-    size_t s = ms / 1000;
-
-    ts.tv_sec += s;
-    ts.tv_nsec += ns; // < 1s + 1ms, so wont overflow;
 
     return ts;
+  }
+
+  static std::string ValidatePath(const std::string& path) {
+    // Check if it is a dir
+    struct stat st;
+    int ret = stat(path.c_str(), &st);
+    if (ret < 0 && errno != ENOENT) THROW_ERRNO("stat()", errno);
+
+    if (ret < 0 && errno == ENOENT) {
+      ret = mkdir(path.c_str(), 0777);
+      if (ret < 0) THROW_ERRNO("mkdir()", errno);
+    } else if (!S_ISDIR(st.st_mode))
+      THROW("Error: " + path + " is not a directory");
+
+    if (path.back() != '/') return path + "/";
+
+    return path;
   }
 };
 

@@ -37,7 +37,8 @@ void Cond::Wait(Mutex& mutex) {
 
 void Cond::TimedWait(Mutex& mutex, const timespec& ts) {
   int ret = pthread_cond_timedwait(&Get(), &mutex.Get(), &ts);
-  if (ret != 0) THROW_ERRNO("pthread_cond_timedwait()", ret);
+  if (ret != 0 && ret != ETIMEDOUT)
+    THROW_ERRNO("pthread_cond_timedwait()", ret);
 }
 
 void Cond::Signal() {
@@ -71,5 +72,10 @@ void Thread::Kill(int sig) {
   if (IsJoined.Get()) THROW("Thread is joined");
 
   int ret = pthread_kill(Impl.Get(), sig);
+  if (ret != 0) THROW_ERRNO("pthread_kill()", ret);
+}
+
+void Thread::SetSigmask(int how, const sigset_t& set) {
+  int ret = pthread_sigmask(how, &set, NULL);
   if (ret != 0) THROW_ERRNO("pthread_kill()", ret);
 }

@@ -42,6 +42,7 @@ struct PathTree final {
 
   void VisitPostOrder(VisitF func);
   void VisitPreOrder(VisitF func);
+  bool IsEmpty() const;
   void Clear();
 
   PathTree(const PathTree&) = delete;

@@ -83,11 +83,16 @@ bool FSMonitor::DataReady(const Selector& selector) const {
 }
 
 void FSMonitor::UnregisterAll() {
-  for (auto it = Cache.Begin(); it != Cache.End(); ++it) {
+
+  for (auto it = Cache.Begin(); it != Cache.End();) {
     int ret = RmWatch(it->Wd);
     if (ret < 0)
-      LOG_WARN(GetLogger(), "inotify_rm_watch(): " << strerror(errno));
-    Cache.Remove(it);
+      LOG_WARN(GetLogger(), "inotify_rm_watch(" << it->Wd << "[" << it->Path << "]): " << strerror(errno));
+    
+    auto oldIt = it;
+    it++;
+
+    Cache.Remove(oldIt);
   }
 }
 

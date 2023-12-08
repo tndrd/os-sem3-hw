@@ -93,3 +93,7 @@ void PathTree::Dump(std::ostream& os) const {
 
   func(*Root);
 }
+
+bool PathTree::IsEmpty() const {
+  return Map.size() == 1;
+}

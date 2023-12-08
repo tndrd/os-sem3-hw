@@ -56,14 +56,14 @@ class BackupProducer {
     if (!loggerPtr) THROW("Logger pointer is null");
   }
 
-  void Open(const std::string& srcPath, const std::string& dstPath) {
-    DstRoot = dstPath;
+  void Open(const std::string& srcPath, const std::string& dstPath, const std::string& cachePrefix) {
+    DstRoot = dstPath + cachePrefix;
     SrcRoot = srcPath;
 
-    Observer->Open(srcPath, dstPath);
+    Observer->Open(SrcRoot, DstRoot);
     PathTree tree;
-    tree.AddDir(dstPath);
-    tree.AddDir(srcPath);
+    tree.AddDir(DstRoot);
+    tree.AddDir(SrcRoot);
     Sync(tree);
   }
 

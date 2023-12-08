@@ -22,8 +22,8 @@ class Pipe {
 
     if (ret < 0) THROW_ERRNO("pipe()", errno);
 
-    In = newPipeFd[0];
-    Out = newPipeFd[1];
+    In = newPipeFd[1];
+    Out = newPipeFd[0];
   }
 
   Pipe(const Pipe&) = delete;

@@ -30,6 +30,7 @@ void SelectorAlarm::RegisterAt(Selector& selector) {
 void SelectorAlarm::Alarm() {
   int dummy = 42;
   int ret = write(Pipe.GetIn(), &dummy, 1);
+  if (ret < 0) THROW_ERRNO("write()", errno);
 }
 
 bool SelectorAlarm::HadAlarmed(const Selector& selector) {

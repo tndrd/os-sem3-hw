@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include "HwBackupException.hpp"
+#include "StderrWarning.hpp"
 
 namespace HwBackup {
 
@@ -53,6 +54,10 @@ class WDCache final {
   ListIt Find(const std::string& path) const;
   ListIt End() const;
   ListIt Begin() const;
+
+  size_t Size() const {
+    return List.size();
+  }
 
  private:
   void RemoveImpl(ListIt iter);

@@ -35,5 +35,23 @@ target_link_libraries(Incremental PUBLIC IEventObserver HwBackupException FileTr
 add_library(BackupProducer Src/BackupProducer.cpp)
 target_link_libraries(BackupProducer PUBLIC PathTree IEventObserver)
 
+add_library(${PROJECT_NAME}_Helpers Src/Helpers.cpp)
+target_link_libraries(${PROJECT_NAME}_Helpers PUBLIC HwBackupException)
+
+add_library(FifoChannel Src/FifoChannel.cpp)
+target_link_libraries(FifoChannel PUBLIC PThreadWrapper ${PROJECT_NAME}_Helpers DescriptorWrapper Selector)
+
+add_library(BackupService Src/BackupService.cpp)
+target_link_libraries(BackupService PUBLIC FSMonitor BackupProducer FifoChannel Incremental)
+
+add_executable(BackupTest Test/BackupTest.cpp)
+target_link_libraries(BackupTest PRIVATE BackupService)
+
 add_executable(FSMTest Test/FSMTest.cpp)
 target_link_libraries(FSMTest PUBLIC FSMonitor BackupProducer Incremental)
+
+add_executable(SetPeriod Exec/SetPeriod.cpp)
+target_link_libraries(SetPeriod PRIVATE FifoChannel)
+
+add_executable(StartService Exec/StartService.cpp)
+target_link_libraries(StartService PRIVATE BackupService)

@@ -14,7 +14,7 @@ namespace HwBackup {
 class DescriptorWrapper final: public StateValueWrapper<int> {
  public:
   DescriptorWrapper(int);
-  DescriptorWrapper() = default;
+  DescriptorWrapper();
   ~DescriptorWrapper();
 
   DescriptorWrapper(DescriptorWrapper&&) = default;

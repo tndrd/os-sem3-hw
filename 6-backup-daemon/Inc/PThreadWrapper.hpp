@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <pthread.h>
 #include <signal.h>
 
@@ -12,15 +13,19 @@
 namespace HwBackup {
 namespace PThread {
 
-class Mutex final: public StateValueWrapper<pthread_mutex_t> {
+class Mutex final : public StateValueWrapper<pthread_mutex_t> {
  public:
   Mutex();
   ~Mutex();
+
+  Mutex(Mutex&&) = default;
+  Mutex& operator=(Mutex&&) = default;
+
   void Lock();
   void Unlock();
 };
 
-class Cond final: public StateValueWrapper<pthread_cond_t> {
+class Cond final : public StateValueWrapper<pthread_cond_t> {
  public:
   Cond();
   ~Cond();

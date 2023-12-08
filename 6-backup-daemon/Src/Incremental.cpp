@@ -39,7 +39,6 @@ IncrBackupProducer::IncrBackupProducer(const std::string& targetDir,
 void Incrp::Open(const std::string& srcRoot, const std::string& dstRoot) {
   SrcRoot = srcRoot;
   DstRoot = dstRoot;
-  TargetDir = dstRoot + TargetDir;
 
   OpenHeader();
   SyncHeader();

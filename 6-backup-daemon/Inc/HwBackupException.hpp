@@ -30,6 +30,6 @@ class Exception : public std::exception {
 #define THROW(msg) \
   throw HwBackup::Exception(msg, __FILE__, __FUNCTION__, XSTRINGIFY(__LINE__))
 
-#define THROW_ERRNO(msg, err) THROW(msg + ": "s + strerror(errno))
+#define THROW_ERRNO(msg, err) THROW(msg + ": "s + strerror(err))
 
 }  // namespace HwBackup
