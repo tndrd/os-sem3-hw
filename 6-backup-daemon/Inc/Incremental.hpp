@@ -3,10 +3,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "FileTree.hpp"
-#include "HwBackupException.hpp"
+#include "TnHelpers/Exception.hpp"
+#include "TnHelpers/Files.hpp"
 #include "IEventObserver.hpp"
-#include "Logger.hpp"
+#include "TnHelpers/Logger.hpp"
+
 #define HEADER_NAME "HEADER"
 #define STAGES_NAME "STAGES"
 
@@ -18,7 +19,7 @@ struct IncrBackupProducer final : public IEventObserver {
     size_t NStages = 0;
   };
 
-  using File = FileTree::FileWrapper::FileT;
+  using File = TnHelpers::Files::File::Type;
 
   struct Stage {
     enum class FileT { Regular, Directory };
@@ -42,10 +43,10 @@ struct IncrBackupProducer final : public IEventObserver {
   File HeaderFile;
   File StagesFile;
 
-  Logger* LoggerPtr;
+  TnHelpers::Logger* LoggerPtr;
 
  public:
-  IncrBackupProducer(const std::string& targetDir, Logger* loggerPtr);
+  IncrBackupProducer(const std::string& targetDir, TnHelpers::Logger* loggerPtr);
 
   virtual void Open(const std::string& srcPath,
                     const std::string& dstPath) override;
@@ -57,14 +58,14 @@ struct IncrBackupProducer final : public IEventObserver {
   virtual void ModifyFile(const std::string& path) override;
 
   static std::unique_ptr<IncrBackupProducer> Create(
-      const std::string& targetDir, Logger* loggerPtr);
+      const std::string& targetDir, TnHelpers::Logger* loggerPtr);
 
  private:
   void OpenHeader();
   void OpenStages();
   void SyncHeader();
 
-  Logger& GetLogger();
+  TnHelpers::Logger& GetLogger();
 
   void StagesPrint(const std::string& str);
 

@@ -11,10 +11,10 @@
 #include <string>
 #include <unordered_set>
 
-#include "DescriptorWrapper.hpp"
-#include "HwBackupException.hpp"
+#include "TnHelpers/FileDescriptor.hpp"
+#include "TnHelpers/Exception.hpp"
 #include "IEventObserver.hpp"
-#include "Logger.hpp"
+#include "TnHelpers/Logger.hpp"
 #include "PathTree.hpp"
 
 #define HEADER_NAME "HEADER"
@@ -40,7 +40,7 @@ class BackupProducer {
   };
 
  private:
-  Logger* LoggerPtr;
+  TnHelpers::Logger* LoggerPtr;
   std::string DstRoot;
   std::string SrcRoot;
 
@@ -51,7 +51,7 @@ class BackupProducer {
   IEventObserver::PtrT Observer;
 
  public:
-  BackupProducer(Logger* loggerPtr, IEventObserver::PtrT&& eventObserver)
+  BackupProducer(TnHelpers::Logger* loggerPtr, IEventObserver::PtrT&& eventObserver)
       : LoggerPtr{loggerPtr}, Observer{std::move(eventObserver)} {
     if (!loggerPtr) THROW("Logger pointer is null");
   }
@@ -69,10 +69,10 @@ class BackupProducer {
 
   static FileType OpenFile(const std::string& filePath) {
     int newFd = open(filePath.c_str(), O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
-    if (newFd < 0) THROW_ERRNO("Failed to open fd", errno);
+    if (newFd < 0) THROW_ERRNO("Failed to open fd");
 
     FILE* newFile = fdopen(newFd, "a+");
-    if (!newFile) THROW_ERRNO("Failed open file", errno);
+    if (!newFile) THROW_ERRNO("Failed open file");
 
     return {newFile, FileDeleter{}};
   }
@@ -180,7 +180,7 @@ class BackupProducer {
 
     std::string dst = DstRoot + path;
     int ret = mkdir(dst.c_str(), 0777);
-    if (ret < 0) THROW_ERRNO("mkdir(" + dst + "): ", errno);
+    if (ret < 0) THROW_ERRNO("mkdir(" + dst + "): ");
   }
 
   void SyncFile(const std::string& path) {
@@ -189,7 +189,7 @@ class BackupProducer {
 
     pid_t pid = fork();
 
-    if (pid < 0) THROW_ERRNO("fork()", errno);
+    if (pid < 0) THROW_ERRNO("fork()");
 
     if (pid == 0) {  // Child
       execlp("cp", "cp", src.c_str(), dst.c_str(), "--preserve", NULL);
@@ -212,17 +212,17 @@ class BackupProducer {
     Observer->DeleteFile(path);
 
     int ret = unlink((DstRoot + path).c_str());
-    if (ret < 0) THROW_ERRNO("unlink()", errno);
+    if (ret < 0) THROW_ERRNO("unlink()");
   }
 
   void DeleteDir(const std::string& path) {
     Observer->DeleteDir(path);
 
     int ret = rmdir((DstRoot + path).c_str());
-    if (ret < 0) THROW_ERRNO("rmdir()", errno);
+    if (ret < 0) THROW_ERRNO("rmdir()");
   }
 
-  Logger& GetLogger() {
+  TnHelpers::Logger& GetLogger() {
     assert(LoggerPtr);
     return *LoggerPtr;
   }
@@ -230,7 +230,7 @@ class BackupProducer {
   static StatResult Stat(const std::string& path) {
     struct stat st;
     int ret = stat(path.c_str(), &st);
-    if (ret < 0 && errno != ENOENT) THROW_ERRNO("stat(" + path + ")", errno);
+    if (ret < 0 && errno != ENOENT) THROW_ERRNO("stat(" + path + ")");
     if (ret < 0 && errno == ENOENT) return {false};
 
     return {true, st};

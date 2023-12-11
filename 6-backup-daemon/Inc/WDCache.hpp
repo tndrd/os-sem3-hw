@@ -6,8 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "HwBackupException.hpp"
-#include "StderrWarning.hpp"
+#include "TnHelpers/Exception.hpp"
+#include "TnHelpers/StderrWarning.hpp"
 
 namespace HwBackup {
 

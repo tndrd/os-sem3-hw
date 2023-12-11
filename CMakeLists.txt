@@ -26,7 +26,13 @@ FetchContent_Declare(
   GIT_TAG        master
 )
 
-FetchContent_MakeAvailable(googletest TnStatus TnAsync)
+FetchContent_Declare(
+  TnCppHelpers
+  GIT_REPOSITORY https://github.com/tndrd/TnCppHelpers.git
+  GIT_TAG        master
+)
+
+FetchContent_MakeAvailable(googletest TnStatus TnAsync TnCppHelpers)
 
 # Projects
 add_subdirectory(1-shell-emulator)

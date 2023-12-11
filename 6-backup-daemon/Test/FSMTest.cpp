@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
 
   const char* path = argv[1];
   try {
-    auto logger = Logger::CreateDefault();
+    auto logger = TnHelpers::Logger::CreateDefault();
 
     FSMonitor monitor{1, &logger};
     IEventObserver::PtrT incr =

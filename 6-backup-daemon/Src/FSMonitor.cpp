@@ -1,6 +1,7 @@
 #include "FSMonitor.hpp"
 
 using namespace HwBackup;
+using namespace TnHelpers;
 
 FSMonitor::FSMonitor(size_t eventCapacity, Logger* loggerPtr)
     : Fd{FdInit()}, Buffer{BufferInit(eventCapacity)}, LoggerPtr{loggerPtr} {
@@ -12,8 +13,7 @@ FSMonitor::~FSMonitor() { UnregisterAll(); }
 void FSMonitor::Register(const std::string& eventPath, uint32_t mask) {
   std::string absPath = RootPath + "/" + eventPath;
   int wd = inotify_add_watch(Fd.Get(), absPath.c_str(), mask);
-  if (wd < 0)
-    THROW_ERRNO("inotify_add_watch() with path=\"" + absPath + "\"", errno);
+  if (wd < 0) THROW_ERRNO("inotify_add_watch() with path=\"" + absPath + "\"");
 
   Cache.Add({wd, eventPath});
 }
@@ -22,7 +22,7 @@ void FSMonitor::Unregister(WDCache::ListIt iter) {
   if (iter == Cache.End()) THROW("Entry not found");
 
   int ret = RmWatch(iter->Wd);
-  if (ret < 0) THROW_ERRNO("inotify_rm_watch()", errno);
+  if (ret < 0) THROW_ERRNO("inotify_rm_watch()");
 
   Cache.Remove(iter);
 }
@@ -39,7 +39,7 @@ void FSMonitor::Unregister(const std::string& path) {
 
 void FSMonitor::GetStages(PathTree& tree) {
   int len = read(Fd.Get(), Buffer.data(), Buffer.size());
-  if (len < 0) THROW_ERRNO("read()", errno);
+  if (len < 0) THROW_ERRNO("read()");
 
   const inotify_event* event;
   const uint8_t* ptr = Buffer.data();
@@ -57,9 +57,9 @@ void FSMonitor::GetStages(PathTree& tree) {
   }
 }
 
-DescriptorWrapper FSMonitor::FdInit() {
+FileDescriptor FSMonitor::FdInit() {
   int ret = inotify_init();
-  if (ret < 0) THROW_ERRNO("inotify_init()", errno);
+  if (ret < 0) THROW_ERRNO("inotify_init()");
 
   return ret;
 }
@@ -83,12 +83,12 @@ bool FSMonitor::DataReady(const Selector& selector) const {
 }
 
 void FSMonitor::UnregisterAll() {
-
   for (auto it = Cache.Begin(); it != Cache.End();) {
     int ret = RmWatch(it->Wd);
     if (ret < 0)
-      LOG_WARN(GetLogger(), "inotify_rm_watch(" << it->Wd << "[" << it->Path << "]): " << strerror(errno));
-    
+      LOG_WARN(GetLogger(), "inotify_rm_watch(" << it->Wd << "[" << it->Path
+                                                << "]): " << strerror(errno));
+
     auto oldIt = it;
     it++;
 
@@ -122,7 +122,7 @@ std::vector<std::string> FSMonitor::ScanTree(const std::string& relPathRoot) {
 
   auto deleter = [](DIR* dir) {
     int ret = closedir(dir);
-    if (ret < 0) THROW_ERRNO("closedir()", errno);
+    if (ret < 0) THROW_ERRNO("closedir()");
   };
 
   do {
@@ -132,7 +132,7 @@ std::vector<std::string> FSMonitor::ScanTree(const std::string& relPathRoot) {
                                                 deleter};
 
     if (!dir.get())
-      THROW_ERRNO("Failed to open directory \""s + absPath + "\"", errno);
+      THROW_ERRNO("Failed to open directory \""s + absPath + "\"");
 
     dirent* curDir = NULL;
     while ((curDir = readdir(dir.get())) != NULL) {
@@ -165,7 +165,7 @@ void FSMonitor::RegisterTree(const std::string& relPathRoot) {
 void FSMonitor::RegisterDirectories(const std::vector<std::string>& dirs) {
   auto iter = dirs.cbegin();
 
-  uint32_t mask = IN_CREATE | IN_MODIFY | IN_DELETE | IN_EXCL_UNLINK;
+  uint32_t mask = IN_CREATE | IN_MODIFY | IN_DELETE | IN_MOVE | IN_EXCL_UNLINK;
 
   for (; iter != dirs.cend(); ++iter) {
     LOG_INFO(GetLogger(), "Registering directory \"" << *iter << "\"");

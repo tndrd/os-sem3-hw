@@ -4,9 +4,8 @@
 #include "BackupProducer.hpp"
 #include "FSMonitor.hpp"
 #include "FifoChannel.hpp"
-#include "HwBackupException.hpp"
 #include "Incremental.hpp"
-#include "Logger.hpp"
+#include "TnHelpers/Logger.hpp"
 
 #define HISTORY_NAME "History/"
 #define CHANNEL_NAME "Channel"
@@ -18,20 +17,20 @@ class BackupService {
   std::string SrcPath;
   std::string DstPath;
 
-  Logger* LoggerPtr;
-  PThread::Thread UpdateThread;
-  PThread::Thread SyncThread;
+  TnHelpers::Logger* LoggerPtr;
+  TnHelpers::PThread::Thread UpdateThread;
+  TnHelpers::PThread::Thread SyncThread;
 
-  mutable PThread::Mutex Mutex;
-  PThread::Cond Cond;
+  mutable TnHelpers::PThread::Mutex Mutex;
+  TnHelpers::PThread::Cond Cond;
 
   FSMonitor Monitor;
   BackupProducer Producer;
   Fifo::Listener Listener;
   PathTree Stages;
 
-  Selector UpdateSelector;
-  SelectorAlarm Alarm;
+  TnHelpers::Selector UpdateSelector;
+  TnHelpers::Selector::Alarmer Alarmer;
 
   size_t Period;
 
@@ -39,7 +38,7 @@ class BackupService {
 
  public:
   BackupService(const std::string& srcPath, const std::string& dstPath,
-                size_t period, Logger* loggerPtr)
+                size_t period, TnHelpers::Logger* loggerPtr)
       : DstPath{ValidatePath(dstPath)},
         SrcPath{ValidatePath(srcPath)},
         Monitor{1, loggerPtr},
@@ -47,7 +46,7 @@ class BackupService {
         Listener{DstPath + CHANNEL_NAME},
         LoggerPtr{loggerPtr},
         Period(period) {
-    Alarm.RegisterAt(UpdateSelector);
+    Alarmer.RegisterAt(UpdateSelector);
   }
 
   void Run() {
@@ -93,7 +92,7 @@ class BackupService {
         SetPeriod(newPeriod);
       }
 
-      if (Alarm.HadAlarmed(UpdateSelector)) continue;
+      if (Alarmer.Triggered(UpdateSelector)) continue;
     }
   }
 
@@ -136,7 +135,7 @@ class BackupService {
 
     DoStop = true;
 
-    Alarm.Alarm();
+    Alarmer.Alarm();
     Cond.Signal();
     Mutex.Unlock();
 
@@ -161,18 +160,18 @@ class BackupService {
   }
 
  private:
-  static FSMonitor MonitorInit(Logger* loggerPtr) {
+  static FSMonitor MonitorInit(TnHelpers::Logger* loggerPtr) {
     return FSMonitor{1, loggerPtr};
   }
 
   static BackupProducer ProducerInit(const std::string& dstPath,
-                                     Logger* loggerPtr) {
+                                     TnHelpers::Logger* loggerPtr) {
     return BackupProducer{loggerPtr,
                           IncrBackupProducer::Create(
                               ValidatePath(dstPath + HISTORY_NAME), loggerPtr)};
   }
 
-  Logger& GetLogger() {
+  TnHelpers::Logger& GetLogger() {
     assert(LoggerPtr);
     return *LoggerPtr;
   }
@@ -203,11 +202,11 @@ class BackupService {
     // Check if it is a dir
     struct stat st;
     int ret = stat(path.c_str(), &st);
-    if (ret < 0 && errno != ENOENT) THROW_ERRNO("stat()", errno);
+    if (ret < 0 && errno != ENOENT) THROW_ERRNO("stat()");
 
     if (ret < 0 && errno == ENOENT) {
       ret = mkdir(path.c_str(), 0777);
-      if (ret < 0) THROW_ERRNO("mkdir()", errno);
+      if (ret < 0) THROW_ERRNO("mkdir()");
     } else if (!S_ISDIR(st.st_mode))
       THROW("Error: " + path + " is not a directory");
 

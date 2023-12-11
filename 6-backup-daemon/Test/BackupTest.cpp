@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
   std::string src = argv[1];
   std::string dst = argv[2];
 
-  auto logger = Logger::CreateDefault();
+  auto logger = TnHelpers::Logger::CreateDefault();
   HwBackup::BackupService service {src, dst, 10000, &logger};
 
   service.Run();

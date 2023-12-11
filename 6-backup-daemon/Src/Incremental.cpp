@@ -1,6 +1,8 @@
 #include "Incremental.hpp"
 
 using namespace HwBackup;
+using namespace TnHelpers;
+
 using Incrp = IncrBackupProducer;
 using Stage = Incrp::Stage;
 
@@ -46,12 +48,12 @@ void Incrp::Open(const std::string& srcRoot, const std::string& dstRoot) {
 }
 
 void Incrp::OpenHeader() {
-  HeaderFile = FileTree::FileWrapper::OpenFile(GetTarget(HEADER_NAME), "a+");
+  HeaderFile = Files::File::Open(GetTarget(HEADER_NAME), "a+");
 
   size_t nStages;
   int ret = fscanf(HeaderFile.get(), "%zu", &nStages);
 
-  if (ret == EOF && ferror(HeaderFile.get())) THROW_ERRNO("fscanf()", errno);
+  if (ret == EOF && ferror(HeaderFile.get())) THROW_ERRNO("fscanf()");
   if (ret == EOF) nStages = 0;
   if (ret != EOF && ret != 1) THROW("fscanf(): matching error");
 
@@ -60,15 +62,15 @@ void Incrp::OpenHeader() {
 }
 
 void Incrp::OpenStages() {
-  StagesFile = FileTree::FileWrapper::OpenFile(GetTarget(STAGES_NAME), "a+");
+  StagesFile = Files::File::Open(GetTarget(STAGES_NAME), "a+");
 }
 
 void Incrp::SyncHeader() {
   int ret = ftruncate(fileno(HeaderFile.get()), 0);
-  if (ret < 0) THROW_ERRNO("ftruncate()", errno);
+  if (ret < 0) THROW_ERRNO("ftruncate()");
 
   ret = fprintf(HeaderFile.get(), "%zu", Header.NStages);
-  if (ret < 0) THROW_ERRNO("fprintf()", errno);
+  if (ret < 0) THROW_ERRNO("fprintf()");
   fflush(HeaderFile.get());
 }
 
@@ -80,7 +82,7 @@ Logger& Incrp::GetLogger() {
 void Incrp::StagesPrint(const std::string& str) {
   int ret = fprintf(StagesFile.get(), "%s", str.c_str());
   fflush(StagesFile.get());
-  if (ret < 0) THROW_ERRNO("fprintf()", errno);
+  if (ret < 0) THROW_ERRNO("fprintf()");
 }
 
 void Incrp::PutStageRecord(const Stage& stage) {
@@ -183,7 +185,7 @@ void Incrp::MakePatch(const std::string& before, const std::string& after,
 
 void Incrp::System(const std::string& cmd, std::function<bool(int)> exitCheck) {
   int ret = system(cmd.c_str());
-  if (ret < 0) THROW_ERRNO("system()", errno);
+  if (ret < 0) THROW_ERRNO("system()");
 
   if (WIFEXITED(ret) && !WEXITSTATUS(ret)) return;
 

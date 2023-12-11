@@ -10,9 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "HwBackupException.hpp"
-#include "StderrWarning.hpp"
-#include "FileTree.hpp"
+#include "TnHelpers/Exception.hpp"
+#include "TnHelpers/StderrWarning.hpp"
+#include "TnHelpers/Files.hpp"
 
 namespace HwBackup {
 

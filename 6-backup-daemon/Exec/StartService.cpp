@@ -3,12 +3,13 @@
 #include "BackupService.hpp"
 
 using namespace HwBackup;
+using namespace TnHelpers;
 
 #define DEFAULT_PERIOD 1000
 
 pid_t CreateDaemon(std::function<int()> routine) {
   pid_t pid = fork();
-  if (pid < 0) THROW_ERRNO("fork()", errno);
+  if (pid < 0) THROW_ERRNO("fork()");
 
   if (pid > 0) return pid;
 

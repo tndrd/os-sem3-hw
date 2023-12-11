@@ -7,11 +7,10 @@
 
 #include <array>
 
-#include "DescriptorWrapper.hpp"
-#include "Helpers.hpp"
-#include "HwBackupException.hpp"
-#include "PThreadWrapper.hpp"
-#include "Selector.hpp"
+#include "TnHelpers/FileDescriptor.hpp"
+#include "TnHelpers/PThread.hpp"
+#include "TnHelpers/Pipe.hpp"
+#include "TnHelpers/Selector.hpp"
 
 #define LISTENER_BUFSIZE 256
 #define CTL_SIGNAL SIGUSR1
@@ -23,26 +22,26 @@ struct Fifo {
 
   class Listener {
    private:
-    DescriptorWrapper Fd;
+    TnHelpers::FileDescriptor Fd;
     std::string Path;
-    Helpers::Pipe Pipe;
-    PThread::Thread Thread;
+    TnHelpers::IPC::Pipe Pipe;
+    TnHelpers::PThread::Thread Thread;
     std::array<uint8_t, LISTENER_BUFSIZE> Buffer;
 
-    Selector::IdT SelectorId;
+    TnHelpers::Selector::IdT SelectorId;
     bool DoStop = false;
 
    public:
     Listener(const std::string& path) : Path{path} {
       int ret = mkfifo(Path.c_str(), 0666);
-      if (ret < 0 && errno != EEXIST) THROW_ERRNO("mkfifo()", errno);
+      if (ret < 0 && errno != EEXIST) THROW_ERRNO("mkfifo()");
     }
 
-    void RegisterAt(Selector& selector) {
-      SelectorId = selector.Register(Pipe.GetOut(), POLLIN);
+    void RegisterAt(TnHelpers::Selector& selector) {
+      SelectorId = selector.Register(Pipe.ReadFd(), POLLIN);
     }
 
-    bool DataReady(const Selector& selector) {
+    bool DataReady(const TnHelpers::Selector& selector) {
       return selector.GetEvents(SelectorId) & POLLIN;
     }
 
@@ -56,7 +55,7 @@ struct Fifo {
 
     void Start() {
       DoStop = false;
-      Thread = PThread::Thread{MainLoopAdapter, this};
+      Thread = {MainLoopAdapter, this};
     }
 
     void Stop() {
@@ -84,8 +83,8 @@ struct Fifo {
       size_t total = 0;
 
       while (total < size) {
-        int ret = read(Pipe.GetOut(), buf + total, size - total);
-        if (ret < 0) THROW_ERRNO("read()", errno);
+        int ret = read(Pipe.ReadFd(), buf + total, size - total);
+        if (ret < 0) THROW_ERRNO("read()");
         if (ret == 0) THROW("Pipe closed unexpectedly");
 
         total += ret;
@@ -96,14 +95,13 @@ struct Fifo {
       TweakSignals();
       while (1) {
         int ret = open(Path.c_str(), O_RDONLY);
-        if (ret < 0 && errno != EINTR) THROW_ERRNO("open()", errno);
+        if (ret < 0 && errno != EINTR) THROW_ERRNO("open()");
         if (ret < 0 && errno == EINTR) {
           if (DoStop) break;
-
           THROW("Unexpected signal received");
         }
 
-        Fd = DescriptorWrapper{ret};
+        Fd = {ret};
 
         while (1) {
           int read = ReadToBuf();
@@ -116,7 +114,7 @@ struct Fifo {
     size_t ReadToBuf() {
       int ret = read(Fd.Get(), Buffer.data(), Buffer.size());
 
-      if (ret < 0) THROW_ERRNO("read()", errno);
+      if (ret < 0) THROW_ERRNO("read()");
 
       return ret;
     }
@@ -125,8 +123,8 @@ struct Fifo {
       size_t total = 0;
 
       while (total < sz) {
-        int ret = write(Pipe.GetIn(), Buffer.data() + total, sz - total);
-        if (ret <= 0) THROW_ERRNO("write()", errno);
+        int ret = write(Pipe.WriteFd(), Buffer.data() + total, sz - total);
+        if (ret <= 0) THROW_ERRNO("write()");
 
         total += ret;
       }
@@ -150,14 +148,14 @@ struct Fifo {
       sa.sa_handler = DummyHandler;
 
       int ret = sigaction(CTL_SIGNAL, &sa, NULL);
-      if (ret < 0) THROW_ERRNO("sigaction()", errno);
+      if (ret < 0) THROW_ERRNO("sigaction()");
       Sig1Mask(SIG_UNBLOCK, CTL_SIGNAL);
     }
   };
 
   class Client {
    private:
-    DescriptorWrapper Fd;
+    TnHelpers::FileDescriptor Fd;
     bool Connected = false;
 
    public:
@@ -169,7 +167,7 @@ struct Fifo {
       ValidatePath(path);
 
       int ret = open(path.c_str(), O_WRONLY);
-      if (ret < 0) THROW_ERRNO("open()", errno);
+      if (ret < 0) THROW_ERRNO("open()");
 
       Fd = {ret};
       Connected = true;
@@ -193,7 +191,7 @@ struct Fifo {
       size_t total = 0;
       while (total < size) {
         int ret = write(Fd.Get(), buf + total, size - total);
-        if (ret < 0) THROW_ERRNO("write()", errno);
+        if (ret < 0) THROW_ERRNO("write()");
         if (ret == 0) THROW("Server closed connection");
 
         total += ret;
@@ -203,7 +201,7 @@ struct Fifo {
     void ValidatePath(const std::string& path) {
       struct stat st;
       int ret = stat(path.c_str(), &st);
-      if (ret < 0) THROW_ERRNO("stat()", errno);
+      if (ret < 0) THROW_ERRNO("stat()");
       if (!S_ISFIFO(st.st_mode)) THROW("File " + path + " is not a FIFO");
     }
   };

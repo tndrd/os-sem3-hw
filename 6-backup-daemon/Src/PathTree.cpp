@@ -1,7 +1,5 @@
 #include "PathTree.hpp"
 
-#include "StderrWarning.hpp"
-
 using namespace HwBackup;
 
 PathTree::PathTree() {
@@ -45,7 +43,7 @@ void PathTree::AddDir(const std::string& rootPath) {
     this->AddPath(path, name);
   };
 
-  FileTree::DFS(rootPath, func);
+  TnHelpers::Files::Directory::DFS(rootPath, func);
 }
 
 void PathTree::VisitPostOrder(VisitF func) {
@@ -94,6 +92,4 @@ void PathTree::Dump(std::ostream& os) const {
   func(*Root);
 }
 
-bool PathTree::IsEmpty() const {
-  return Map.size() == 1;
-}
+bool PathTree::IsEmpty() const { return Map.size() == 1; }
