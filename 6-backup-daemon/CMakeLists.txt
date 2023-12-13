@@ -37,3 +37,6 @@ target_link_libraries(SetPeriod PRIVATE FifoChannel)
 
 add_executable(StartService Exec/StartService.cpp)
 target_link_libraries(StartService PRIVATE BackupService)
+
+# Copy scripts to build directory
+configure_file(Scripts/Restore.py ${CMAKE_CURRENT_BINARY_DIR}/Restore.py COPYONLY)
